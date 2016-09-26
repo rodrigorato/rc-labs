@@ -83,7 +83,7 @@ int main(int argc, char* argv[]){
 				char temp[MAX_COMPUTER_NAME];
 				sscanf(argv[i+1], "%s", temp);
 				printf("[!] - Custom TCS name set @ ");
-				cout << TCSname << endl;
+				cout << temp << endl;
 				TCSname = temp;
 				break;
 
@@ -103,9 +103,9 @@ int main(int argc, char* argv[]){
 	printf(":%d.\n", TCSport);
 
 	// Attempts to get a socket for an UDP connection with the TCS.
-	printf("[TRS-Server @ %d] - Will now try to create a socket.", TRSport);
+	printf("[TRS-Server @ %d] - Will now try to create a socket.\n", TRSport);
 	if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) printSysCallFailed();
-	printf("[TRS-Server @ %d] - Successfully created the socket.", TRSport);
+	printf("[TRS-Server @ %d] - Successfully created the socket.\n", TRSport);
 
 	tcs_ptr = gethostbyname(TCSname.c_str());
 
