@@ -59,6 +59,7 @@ int main(int argc, char* argv[]){
 	int TRSport = TRSPORT_CONST, TCSport = TCSPORT_CONST;
 	string TCSname = TCSNAME_CONST;
 	char* lang_name = argv[1]; // No harm doing this even without checking argc.
+	char local_name[MAX_COMPUTER_NAME]; local_name[MAX_COMPUTER_NAME - 1] = '\0';
 
 	// Socket variables.
 	int fd;
@@ -98,14 +99,15 @@ int main(int argc, char* argv[]){
 	}
 	
 	// Writes out the current session data.
-	printf("[TRS-Server @ %d] - Now serving \'%s\' for ", TRSport, lang_name);
+	if(gethostname(local_name, MAX_COMPUTER_NAME - 1) == -1) printSysCallFailed();
+	printf("[%s:%d] - Now serving \'%s\' for ", local_name, TRSport, lang_name);
 	cout << TCSname;
 	printf(":%d.\n", TCSport);
 
 	// Attempts to get a socket for an UDP connection with the TCS.
-	printf("[TRS-Server @ %d] - Will now try to create a socket.\n", TRSport);
+	printf("[%s:%d]- Will now try to create a socket.\n", local_name, TRSport);
 	if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) printSysCallFailed();
-	printf("[TRS-Server @ %d] - Successfully created the socket.\n", TRSport);
+	printf("[%s:%d] - Successfully created the socket.\n", local_name, TRSport);
 
 	tcs_ptr = gethostbyname(TCSname.c_str());
 
@@ -116,10 +118,11 @@ int main(int argc, char* argv[]){
 
 	addrlen = sizeof(tcs_address);
 
+	// sendto(int sockfd, char* message, size_t len(message), int flags = 0, sockaddr* dest_addr, socklen_t addrlen);
 	if(sendto(fd, "Hello this is dog\n", strlen("Hello this is dog\n") + 1, 0, (struct sockaddr*) &tcs_address, addrlen) == -1) printSysCallFailed();
 	printf("Sent message:\n%s\n", "Hello this is dog\n");
 	
-
+	// recvfrom(int sockfd, char* message, size_t len(message), int flags=0, sockaddr* src_addr, socklen_t* addrlen)
 	char buffer[256];
 	if(recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &tcs_address, &addrlen) == -1) printSysCallFailed();
 	printf("Received message:\n%s\n", buffer); 
