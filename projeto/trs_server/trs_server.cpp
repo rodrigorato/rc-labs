@@ -1,8 +1,6 @@
 /**
  *	TRS Server for RC-Translate
  *	Written by group number (GN) 14.
- * 
- * 	Usage: ./TRS language [-p TRSport] [-n TCSname] [-e TCSport]
  *
  **/
 
@@ -12,14 +10,17 @@
 
 #define GN 14 
 
-// Headers/libs
-#include <iostream>
+// C Headers/libs
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <string.h>
+
+// C++ Headers/libs
+#include <iostream>
 #include <string>
  
 
@@ -47,19 +48,30 @@ void printWrongUsageExit(){
 	exit(1);
 }
 
+void printSysCallFailed(){
+	printf("A vital syscall for this program failed, we will not be able to continue.\n");
+	printf("For further detail check the log that was being written on this terminal.\n");
+	exit(1);
+}
+
 int main(int argc, char* argv[]){
+	// TRS config variables.
 	int TRSport = TRSPORT_CONST, TCSport = TCSPORT_CONST;
 	string TCSname = TCSNAME_CONST;
-
 	char* lang_name = argv[1]; // No harm doing this even without checking argc.
 
+	// Socket variables.
+	int fd;
+	socklen_t addrlen;
+	struct hostent* tcs_ptr;
+	struct sockaddr_in tcs_address;
+
+	// Parse the arguments and the the variables accordingly.
 	if(argc < 2 || argc > 8)
 		printWrongUsageExit();
-		
 	for(int i = 2; i < argc; i+=2){
-		if(argv[i][0] != '-'){
+		if(argv[i][0] != '-')
 			printWrongUsageExit();
-		}
 
 		switch(argv[i][1]){
 			case 'p': // NEW TRSport
@@ -84,11 +96,35 @@ int main(int argc, char* argv[]){
 				printWrongUsageExit();
 		}
 	}
-
 	
+	// Writes out the current session data.
 	printf("[TRS-Server @ %d] - Now serving \'%s\' for ", TRSport, lang_name);
 	cout << TCSname;
 	printf(":%d.\n", TCSport);
 
+	// Attempts to get a socket for an UDP connection with the TCS.
+	printf("[TRS-Server @ %d] - Will now try to create a socket.", TRSport);
+	if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) printSysCallFailed();
+	printf("[TRS-Server @ %d] - Successfully created the socket.", TRSport);
+
+	tcs_ptr = gethostbyname(TCSname.c_str());
+
+	memset((void*)&tcs_address, (int)'\0', sizeof(tcs_address)); // Clears tcs_address's struct
+	tcs_address.sin_family = AF_INET; // Setting up the socket's struct
+	tcs_address.sin_addr.s_addr = ((struct in_addr*) (tcs_ptr->h_addr_list[0]))->s_addr;
+	tcs_address.sin_port = htons((u_short)TCSport);
+
+	addrlen = sizeof(tcs_address);
+
+	if(sendto(fd, "Hello this is dog\n", strlen("Hello this is dog\n") + 1, 0, (struct sockaddr*) &tcs_address, addrlen) == -1) printSysCallFailed();
+	printf("Sent message:\n%s\n", "Hello this is dog\n");
+	
+
+	char buffer[256];
+	if(recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &tcs_address, &addrlen) == -1) printSysCallFailed();
+	printf("Received message:\n%s\n", buffer); 
+
+
+	close(fd);
 	return 0;
 }
