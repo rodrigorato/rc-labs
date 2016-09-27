@@ -34,7 +34,7 @@ int main(int argc, char** argv){
 	char buffer[128], instruction[8];
 	char *message;
 	char languages[MAX_LANGS][MAX_SIZE_LANGUAGE], words[MAX_WORDS][MAX_SIZE_WORD];
-	int TRSport=TRSPORT;
+	int TCSport=TCSPORT;
 	string TCSname=TCSNAME;
 
 	//./user -n TCSname -p TCSport
@@ -47,8 +47,8 @@ int main(int argc, char** argv){
 
 		switch(argv[i][1]){
 			case 'p': // NEW TRSport
-				sscanf(argv[i+1], "%d", &TRSport);
-				printf("[!] - Custom TRS port set @ %d.\n", TRSport);
+				sscanf(argv[i+1], "%d", &TCSport);
+				printf("[!] - Custom TCS port set @ %d.\n", TCSport);
 				break;
 
 			case 'n': // NEW TCSname
@@ -89,10 +89,14 @@ int main(int argc, char** argv){
 			scanf("%d %c", &langNum, &tf );
 
 			//UNQ + language   languages[langNum-1]
-			char message2[4+MAX_SIZE_LANGUAGE+1] = "UNQ ";// necessario espaco pa \n?
+			string message2="UNQ";
+			string temp= languages[langNum-1];
+			message2+=temp;
+			message2+='\n';
+			/*char message2[4+MAX_SIZE_LANGUAGE+1] = "UNQ ";// necessario espaco pa \n?
 			strcat(message2, languages[langNum-1]);
-			strcat(message2, '\n');
-			if(sendto(fd, message2, strlen(message2) + 1, 0, (struct sockaddr*) &serveraddr, addrlen) == -1) exit(1);
+			strcat(message2, '\n');*/
+			if(sendto(fd, message2.c_str(), message2.length() + 1, 0, (struct sockaddr*) &serveraddr, addrlen) == -1) exit(1);
 			printf("Sent message: %s", message2);//UNQ language
 			if(tf=='t'){
 				int numWords;
