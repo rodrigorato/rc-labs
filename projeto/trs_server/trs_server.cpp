@@ -105,7 +105,7 @@ int main(int argc, char* argv[]){
 	printf(":%d.\n", TCSport);
 
 	// Attempts to get a socket for an UDP connection with the TCS.
-	printf("[%s:%d]- Will now try to create a socket.\n", local_name, TRSport);
+	printf("[%s:%d] - Will now try to create a socket.\n", local_name, TRSport);
 	if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) printSysCallFailed();
 	printf("[%s:%d] - Successfully created the socket.\n", local_name, TRSport);
 
