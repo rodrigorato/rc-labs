@@ -97,7 +97,7 @@ int main(int argc, char** argv){
 			strcat(message2, languages[langNum-1]);
 			strcat(message2, '\n');*/
 			if(sendto(fd, message2.c_str(), message2.length() + 1, 0, (struct sockaddr*) &serveraddr, addrlen) == -1) exit(1);
-			printf("Sent message: %s", message2);//UNQ language
+			printf("Sent message: %s", message2.c_str());//UNQ language
 			if(tf=='t'){
 				int numWords;
 				scanf("%d", &numWords);
