@@ -125,6 +125,8 @@ int main(int argc, char const *argv[])
 
 		sscanf(buffer, "%s",command); // determine the received command
 
+		cout << buffer << endl;
+
 		if (!strcmp(command,LIST_REQUEST))		// list command processing
 			{
 				if (servers.size() == 0) // There are no servers available
