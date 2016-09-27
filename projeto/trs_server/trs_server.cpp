@@ -54,6 +54,14 @@ void printSysCallFailed(){
 	exit(1);
 }
 
+void sendUdpMessage(string message, int sock_fd, int flags, sockaddr_in tcs_address){
+	int addrlen = sizeof(tcs_address);
+	// sendto(int sockfd, char* message, size_t len(message), int flags = 0, sockaddr* dest_addr, socklen_t addrlen);
+	if(sendto(sock_fd, message.c_str(), strlen(message.c_str()) + 1, 0, (struct sockaddr*) &tcs_address, addrlen) == -1) 
+		printSysCallFailed();
+	
+}	
+
 int main(int argc, char* argv[]){
 	// TRS config variables.
 	int TRSport = TRSPORT_CONST, TCSport = TCSPORT_CONST;
@@ -63,7 +71,6 @@ int main(int argc, char* argv[]){
 
 	// Socket variables.
 	int fd;
-	socklen_t addrlen;
 	struct hostent* tcs_ptr;
 	struct sockaddr_in tcs_address;
 
@@ -116,17 +123,20 @@ int main(int argc, char* argv[]){
 	tcs_address.sin_addr.s_addr = ((struct in_addr*) (tcs_ptr->h_addr_list[0]))->s_addr;
 	tcs_address.sin_port = htons((u_short)TCSport);
 
-	addrlen = sizeof(tcs_address);
-
-	// sendto(int sockfd, char* message, size_t len(message), int flags = 0, sockaddr* dest_addr, socklen_t addrlen);
-	if(sendto(fd, "Hello this is dog\n", strlen("Hello this is dog\n") + 1, 0, (struct sockaddr*) &tcs_address, addrlen) == -1) printSysCallFailed();
-	printf("Sent message:\n%s\n", "Hello this is dog\n");
+	
+	
+	sendUdpMessage("Some test message haha!\n", fd, 0, tcs_address);
+	sendUdpMessage("2!\n", fd, 0, tcs_address);
+	sendUdpMessage("3\n", fd, 0, tcs_address);
+	sendUdpMessage("4!\n", fd, 0, tcs_address);
+	
 	
 	// recvfrom(int sockfd, char* message, size_t len(message), int flags=0, sockaddr* src_addr, socklen_t* addrlen)
+	/*
 	char buffer[256];
 	if(recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &tcs_address, &addrlen) == -1) printSysCallFailed();
 	printf("Received message:\n%s\n", buffer); 
-
+	*/
 
 	close(fd);
 	return 0;
