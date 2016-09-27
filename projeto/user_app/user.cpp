@@ -9,8 +9,9 @@
 
 #include <iostream>
 #include <string>
+#include <sstream>
 
-#define TRSPORT 59000
+//#define TRSPORT 59000
 #define TCSNAME "localhost"
 #define TCSPORT 58014
 
@@ -25,18 +26,20 @@
 #define MAX_FILE_NAME  99 //idk
 
 using namespace std;
-
+//por if em gethosts, perguntar ao user what do do se o tejo nao responde 
 int main(int argc, char** argv){	
 	int fd;
 	socklen_t addrlen;
 	struct hostent* hostptr;
 	struct sockaddr_in serveraddr, clientaddr;
 	char buffer[128], instruction[8];
-	char *message;
-	char languages[MAX_LANGS][MAX_SIZE_LANGUAGE], words[MAX_WORDS][MAX_SIZE_WORD];
+	char message[128];   //  buffer and message have a random bullshit size
 	int TCSport=TCSPORT;
 	string TCSname=TCSNAME;
-
+	
+	char languages[MAX_LANGS][MAX_SIZE_LANGUAGE], words[MAX_WORDS][MAX_SIZE_WORD];
+	char tf;//indicador se vai-se traduzir texto ou ficheiro
+	int numWords;
 	//./user -n TCSname -p TCSport
 
 	if(argc < 1 || argc > 5)
@@ -85,7 +88,6 @@ int main(int argc, char** argv){
 		}
 		else if (!strcmp(instruction,"request")){
 			int langNum;
-			char tf;
 			scanf("%d %c", &langNum, &tf );
 
 			//UNQ + language   languages[langNum-1]
@@ -99,7 +101,6 @@ int main(int argc, char** argv){
 			if(sendto(fd, message2.c_str(), message2.length() + 1, 0, (struct sockaddr*) &serveraddr, addrlen) == -1) exit(1);
 			printf("Sent message: %s", message2.c_str());//UNQ language
 			if(tf=='t'){
-				int numWords;
 				scanf("%d", &numWords);
 				printf("Palavras a imprimir para %s:\n",languages[langNum-1]);
 				for(int i=0; i<numWords;i++){
@@ -107,7 +108,7 @@ int main(int argc, char** argv){
 					printf("%s\n",words[i]);
 				}
 			}else if(tf=='f'){
-				char filename[MAX_FILE_NAME];  //provavelmente sitiu mau pa declarar isto
+				char filename[MAX_FILE_NAME];  //provavelmente sitiu mau pa declarar isto????????
 				scanf("%s",filename);
 			}
 
@@ -115,61 +116,65 @@ int main(int argc, char** argv){
 			
 		if(recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &serveraddr, &addrlen) == -1) exit(1);
 		printf("Received message\n"); 
+		printf("buffer: %s\n",buffer );
 
 		sscanf(buffer,"%s", message);
-		printf("buffer: %s\n",buffer );
-		printf("message: %s\n",message);
-		cout << endl;
 		if(buffer[4]=='E'){ // TCS devolve mensagem de erro
-			char *m;
-			sscanf(buffer,"%s",m);
+			char m[3];
+			sscanf(buffer,"%s %s",message, m);
 			if(!strcmp(m,"EOF")) printf("pedido nao pode ser cumprido\n");
 			else if (!strcmp(m,"ERR")) printf("Wrong instruction\n");
 		}else if(!strcmp(message,"ULR")){    //ULR , resposta ao pedido de linguas
 			int numLangs;
-			sscanf(buffer,"%d",&numLangs);
+			sscanf(buffer,"%s %d",message, &numLangs);
 			printf("Languages available:\n");
 			for(int i=0; i<numLangs;i++){
 
-				sscanf(buffer,"%s",languages[i]);
+				sscanf(buffer,"%s %d %s",message,&numLangs,languages[i]);
 				printf("%d - %s\n", i+1, languages[i]);
 			}
 			
 		}else if (!strcmp(message,"UNR")){
-			char ipTRS[16];    //provavelmente sitiu mau pa declarar isto
+			char ipTRS[16];    //provavelmente sitiu mau pa declarar isto??????
 			int portTRS;
-			sscanf(buffer, "%s %d",ipTRS,&portTRS); //id é string num ou struct hostent*?
+			sscanf(buffer, "%s %s %d",message, ipTRS,&portTRS); //id é string num ou struct hostent*?
+
 			//inicio comunicacao com TRS usando TCP
 			int fd2;
+			struct hostent* hostptr2;
+			struct sockaddr_in serveraddr2;
+			char buffer2[128];
 
-			/*int fd;
-			struct hostent* hostptr;
-			struct sockaddr_in serveraddr;
-			char buffer[128];	
-			
-			if((fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) exit(1);
-			
-			hostptr = gethostbyname("lima.tecnico.ulisboa.pt");
-				
-			memset((void*)&serveraddr, (int)'\0', sizeof(serveraddr));
-			serveraddr.sin_family = AF_INET;
-			serveraddr.sin_addr.s_addr = ((struct in_addr*) (hostptr->h_addr_list[0]))->s_addr;
-			serveraddr.sin_port = htons((u_short)PORT);
-			
-			
-			if(connect(fd, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1) exit(1);
+			if((fd2 = socket(AF_INET, SOCK_STREAM, 0)) == -1) exit(1);
+			hostptr2=gethostbyaddr(ipTRS, sizeof(ipTRS),AF_INET);
+
+			memset((void*)&serveraddr2, (int)'\0', sizeof(serveraddr2));
+			serveraddr2.sin_family = AF_INET;
+			serveraddr2.sin_addr.s_addr = ((struct in_addr*) (hostptr2->h_addr_list[0]))->s_addr;
+			serveraddr2.sin_port = htons((u_short)portTRS);
+
+			if(connect(fd2, (struct sockaddr*) &serveraddr2, sizeof(serveraddr2)) == -1) exit(1);
 			printf("Connected successfully\n");
 
+			if(tf=='t'){
+				ostringstream stream;
+				string message3 = "TRQ t ";
+				stream << numWords;
+				message3 += stream.str();
+				for(int i=0; i<numWords;i++)	
+					message3 += ' ' + words[i];
+				message3 += '\n';
+				if(write(fd2, message3.c_str(), message3.length()) == -1) exit(1);
+				cout << "sent message: \n" << message3 << endl;	
+				
+			}
 
-			if(write(fd, MESSAGE, strlen(MESSAGE)) == -1) exit(1);
-			printf("Sent message:\n%s\n", MESSAGE);	
 
+			if(read(fd2, buffer2, 128) == -1) exit(1);
+			printf("Received message:\n%s\n", buffer2); 
 
-			if(read(fd, buffer, 128) == -1) exit(1);
-			printf("Received message:\n%s\n", buffer); 
+			close(fd2);
 
-			
-			close(fd);*/
 		}
 
 		scanf("%s", instruction);
