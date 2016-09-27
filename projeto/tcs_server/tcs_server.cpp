@@ -30,6 +30,18 @@
 #define CONNECT_REQUEST "UNQ"
 #endif
 
+#ifndef CONNECT_RETURN
+#define CONNECT_RETURN "UNR"
+#endif
+
+#ifndef CONNECT_RETURN_UNKNOWN
+#define CONNECT_RETURN_UNKNOWN "UNR EOF"
+#endif
+
+#ifndef CONNECT_RETURN_ERROR
+#define CONNECT_RETURN_ERROR "UNR ERR"
+#endif
+
 #ifndef NEW_SERVER
 #define NEW_SERVER "SRG"
 #endif
@@ -74,6 +86,8 @@ struct Server // struct to hold data about currently active servers
 
 using namespace std;
 
+int duplicateLanguage(vector<Server> servers, char* language);
+
 int main(int argc, char const *argv[])
 {	
 	int fd; // file discriptor for socket
@@ -115,12 +129,12 @@ int main(int argc, char const *argv[])
 			{
 				if (servers.size() == 0) // There are no servers available
 				{
-					if(sendto(fd, NO_SERVERS_ERROR, sizeof(NO_SERVERS_ERROR), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send no available servers error
+					if(sendto(fd, NO_SERVERS_ERROR, strlen(NO_SERVERS_ERROR), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send no available servers error
 					exit(1);
 				}
 				else
 				{
-					if(sendto(fd, LIST_RESPONSE, sizeof(LIST_RESPONSE), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send initial response
+					if(sendto(fd, LIST_RESPONSE, strlen(LIST_RESPONSE), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send initial response
 					exit(1);
 
 					if(sendto(fd, (const char*) servers.size(), sizeof(servers.size()), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send number of avaulabel servers
@@ -128,7 +142,7 @@ int main(int argc, char const *argv[])
 
 					for (unsigned i = 0; i < servers.size(); ++i) //send the language of all available servers
 						{
-							if(sendto(fd, servers[i].language, sizeof(servers[i].language), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) 
+							if(sendto(fd, servers[i].language, strlen(servers[i].language), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) 
 								exit(1);
 						}
 
@@ -136,7 +150,30 @@ int main(int argc, char const *argv[])
 				
 			}
 		else if (!strcmp(command,CONNECT_REQUEST)) // translator connection request
-			cout << "Connection request recieved" << endl;
+			{
+				char language_buffer[20];
+				
+				sscanf(buffer,"%s %s\n", command, language_buffer);
+
+				if (duplicateLanguage(servers,language_buffer))
+				{
+					for (unsigned i = 0; i < servers.size(); ++i)
+					{
+						if (!strcmp(servers[i].language,language_buffer))
+						{
+							if(sendto(fd, servers[i].ip_addr, strlen(servers[i].ip_addr), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) 
+								exit(1);
+							if(sendto(fd, (char*)servers[i].port, sizeof(servers[i].port), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) 
+								exit(1);
+						}
+					}
+				}
+				else
+				{
+						if(sendto(fd, CONNECT_RETURN_UNKNOWN, strlen(CONNECT_RETURN_UNKNOWN), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) 
+								exit(1);
+				}
+			}
 		
 		else if (!strcmp(command,NEW_SERVER)) // add new avalable translation server
 			{
@@ -144,12 +181,23 @@ int main(int argc, char const *argv[])
 				char ip_buffer[30];
 				int port_buffer;
 				sscanf(buffer,"%s %s %s %d\n", command, language_buffer, ip_buffer, &port_buffer); //get info from new server
-				Server s(language_buffer,ip_buffer, port_buffer); // create new server and add to server vector
-				servers.push_back(s);
-				cout << "Added: " <<  servers[servers.size()-1].language << ' ' << servers[servers.size()-1].ip_addr << ' ' << servers[servers.size()-1].port 
-				<< ' ' << servers.size() << endl;
-				if(sendto(fd, NEW_SERVER_OK, sizeof(NEW_SERVER_OK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to translation server
-					exit(1); 
+
+				if (!duplicateLanguage(servers,language_buffer))
+				{
+					Server s(language_buffer,ip_buffer, port_buffer); // create new server and add to server vector
+					servers.push_back(s);
+					cout << "Added: " <<  servers[servers.size()-1].language << ' ' << servers[servers.size()-1].ip_addr << ' ' << servers[servers.size()-1].port 
+					<< ' ' << servers.size() << endl;
+					if(sendto(fd, NEW_SERVER_OK, strlen(NEW_SERVER_OK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to translation server
+						exit(1); 
+				}
+				else
+				{
+					if(sendto(fd, NEW_SERVER_NOK, strlen(NEW_SERVER_NOK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to translation server
+						exit(1); 
+				}
+
+				
 			}
 		
 		else if (!strcmp(command,CLOSE_SERVER)) // remove server from available list
@@ -167,9 +215,20 @@ int main(int argc, char const *argv[])
 						servers.erase(servers.begin()+i);
 					}
 				}
-				if(sendto(fd, CLOSE_SERVER_OK, sizeof(CLOSE_SERVER_OK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to removed server
+				if(sendto(fd, CLOSE_SERVER_OK, strlen(CLOSE_SERVER_OK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to removed server
 					exit(1);
 			}
 	}
 	return 0;
-}	
+}
+
+
+int duplicateLanguage(vector<Server> servers, char* language)
+{
+	for (unsigned i = 0; i < servers.size() ; ++i)
+	{
+		if (!strcmp(servers[i].language,language))
+		return 1;
+	}
+	return 0;
+}
