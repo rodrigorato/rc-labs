@@ -29,12 +29,15 @@
 #define TCSNAME_CONST "localhost"
 #define TCSPORT_CONST (58000 + GN)
 
+#define TERM_CHAR '\n'
+
 #define MAX_CHARS_PER_WORD 30
 #define MAX_NUM_WORDS_PER_COMMAND 10
 #define MAX_LANGS_PER_INSTANCE 99
 #define MAX_CHARS_PER_LANGNAME 20
+#define MAX_CHARS_UDP_PROTO_MESSAGE 256
 
-#define MAX_COMPUTER_NAME 256 // Ask. Idunno.
+#define MAX_COMPUTER_NAME 25 // Ask. Idunno.
 
 using namespace std;
 
@@ -54,6 +57,12 @@ void printSysCallFailed(){
 	exit(1);
 }
 
+void printBufferReadFailed(){
+	printf("Failed to read data into a buffer, size was not big enough.\n");
+	printf("For further detail check the log that was being written on this terminal.\n");
+	exit(1);
+}
+
 void sendUdpMessage(string message, int sock_fd, int flags, sockaddr_in tcs_address){
 	socklen_t addrlen = sizeof(tcs_address);
 	// sendto(int sockfd, char* message, size_t len(message), int flags = 0, sockaddr* dest_addr, socklen_t addrlen);
@@ -61,6 +70,25 @@ void sendUdpMessage(string message, int sock_fd, int flags, sockaddr_in tcs_addr
 		printSysCallFailed();
 	
 }	
+
+string receiveUdpMessage(int socket_fd, int buffersize, int flags, sockaddr_in src_addr){
+		socklen_t addrlen = sizeof(src_addr);
+		char buffer[buffersize];
+		string final_message;
+		if(recvfrom(socket_fd, buffer, buffersize, 0, (struct sockaddr*) &src_addr, &addrlen) == -1) 
+			printSysCallFailed();
+
+		for(int i = buffersize-1; i >= 0; i--)
+			if(buffer[i] == TERM_CHAR){
+				if((i+1) < buffersize)
+					buffer[i+1] = '\0';
+				else
+					printBufferReadFailed();
+			}
+
+		final_message = buffer;
+		return final_message;
+	}
 
 int main(int argc, char* argv[]){
 	// TRS config variables.
@@ -84,20 +112,20 @@ int main(int argc, char* argv[]){
 		switch(argv[i][1]){
 			case 'p': // NEW TRSport
 				sscanf(argv[i+1], "%d", &TRSport);
-				printf("[!] - Custom TRS port set @ %d.\n", TRSport);
+				printf("[!] - Custom TRS port set to %d.\n", TRSport);
 				break;
 
 			case 'n': // NEW TCSname
 				char temp[MAX_COMPUTER_NAME];
 				sscanf(argv[i+1], "%s", temp);
-				printf("[!] - Custom TCS name set @ ");
+				printf("[!] - Custom TCS name set to ");
 				cout << temp << endl;
 				TCSname = temp;
 				break;
 
 			case 'e': // NEW TCSport
 				sscanf(argv[i+1], "%d", &TCSport);
-				printf("[!] - Custom TCS port set @ %d.\n", TCSport);
+				printf("[!] - Custom TCS port set to %d.\n", TCSport);
 				break;
 
 			default:
@@ -126,18 +154,7 @@ int main(int argc, char* argv[]){
 	
 	
 	sendUdpMessage("Some test message haha!\n", fd, 0, tcs_address);
-	sendUdpMessage("2!\n", fd, 0, tcs_address);
-	sendUdpMessage("3\n", fd, 0, tcs_address);
-	sendUdpMessage("4!\n", fd, 0, tcs_address);
-	
-	
-	
-	// recvfrom(int sockfd, char* message, size_t len(message), int flags=0, sockaddr* src_addr, socklen_t* addrlen)
-	socklen_t addrlen = sizeof(tcs_address);
-	char buffer[256];
-	if(recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &tcs_address, &addrlen) == -1) printSysCallFailed();
-	printf("Received message:\n%s\n", buffer); 
-	
+	string recvd = receiveUdpMessage(fd, MAX_CHARS_UDP_PROTO_MESSAGE, 0, tcs_address).c_str(); 
 
 	close(fd);
 	return 0;
