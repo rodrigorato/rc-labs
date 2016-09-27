@@ -113,10 +113,13 @@ int main(int argc, char** argv){
 
 		}
 			
-		if(recvfrom(fd, buffer, strlen(buffer), 0, (struct sockaddr*) &serveraddr, &addrlen) == -1) exit(1);
-		printf("Received message:\n%s", buffer); 
+		if(recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &serveraddr, &addrlen) == -1) exit(1);
+		printf("Received message\n"); 
 
 		sscanf(buffer,"%s", message);
+		printf("buffer: %s\n",buffer );
+		printf("message: %s\n",message);
+		cout << endl;
 		if(buffer[4]=='E'){ // TCS devolve mensagem de erro
 			char *m;
 			sscanf(buffer,"%s",m);
