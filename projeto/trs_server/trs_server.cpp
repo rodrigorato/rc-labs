@@ -55,9 +55,9 @@ void printSysCallFailed(){
 }
 
 void sendUdpMessage(string message, int sock_fd, int flags, sockaddr_in tcs_address){
-	int addrlen = sizeof(tcs_address);
+	socklen_t addrlen = sizeof(tcs_address);
 	// sendto(int sockfd, char* message, size_t len(message), int flags = 0, sockaddr* dest_addr, socklen_t addrlen);
-	if(sendto(sock_fd, message.c_str(), strlen(message.c_str()) + 1, 0, (struct sockaddr*) &tcs_address, addrlen) == -1) 
+	if(sendto(sock_fd, message.c_str(), strlen(message.c_str()), 0, (struct sockaddr*) &tcs_address, addrlen) == -1) 
 		printSysCallFailed();
 	
 }	
@@ -131,12 +131,13 @@ int main(int argc, char* argv[]){
 	sendUdpMessage("4!\n", fd, 0, tcs_address);
 	
 	
+	
 	// recvfrom(int sockfd, char* message, size_t len(message), int flags=0, sockaddr* src_addr, socklen_t* addrlen)
-	/*
+	socklen_t addrlen = sizeof(tcs_address);
 	char buffer[256];
 	if(recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &tcs_address, &addrlen) == -1) printSysCallFailed();
 	printf("Received message:\n%s\n", buffer); 
-	*/
+	
 
 	close(fd);
 	return 0;
