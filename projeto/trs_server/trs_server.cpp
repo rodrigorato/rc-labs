@@ -19,6 +19,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <string.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
 
 // C++ Headers/libs
 #include <iostream>
@@ -92,6 +94,23 @@ string receiveUdpMessage(int socket_fd, int buffersize, int flags, sockaddr_in s
 		return final_message;
 }
 
+string getMyLocalIpv4(int socket_fd){
+    struct ifreq ifr;
+     
+    char iface[] = "eth0";
+     
+    //Type of address to retrieve - IPv4 IP address
+    ifr.ifr_addr.sa_family = AF_INET;
+ 
+    //Copy the interface name in the ifreq structure
+    strncpy(ifr.ifr_name , iface , IFNAMSIZ-1);
+ 
+    ioctl(socket_fd, SIOCGIFADDR, &ifr);
+
+    string to_return = (inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+    return to_return;
+}
+
 //string getTCSRegisterMessage(string language, )
 
 
@@ -151,20 +170,23 @@ int main(int argc, char* argv[]){
 	printf("[%s:%d] - Successfully created the socket.\n", local_name, TRSport);
 
 	tcs_ptr = gethostbyname(TCSname.c_str());
+	if(tcs_ptr == NULL)
+		printSysCallFailed();
+
 
 	printf("[%s:%d] - Setting up socket settings.\n", local_name, TRSport);
 	memset((void*)&tcs_address, (int)'\0', sizeof(tcs_address)); // Clears tcs_address's struct
 	tcs_address.sin_family = AF_INET; // Setting up the socket's struct
-	tcs_address.sin_addr.s_addr = ((struct in_addr*) (tcs_ptr->h_addr_list[0]))->s_addr;
-	tcs_address.sin_port = htons((u_short)TCSport);
+	tcs_address.sin_addr.s_addr = ((struct in_addr*) (tcs_ptr->h_addr_list[0]))->s_addr; // THIS IS FAILING!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!	
+	tcs_address.sin_port = htons((u_short)TCSport); 
 	printf("[%s:%d] - Socket has been initialized successfully.\n", local_name, TRSport);
 
 	// Done setting up, will now warn TCS that we're live.
 	printf("[%s:%d] - Telling the TCS that we are live.\n", local_name, TRSport);
 	//sendUdpMessage()
-	my_addr.s_addr = *gethostbyname(local_name)->h_addr_list[0];
+	//my_addr.s_addr = *gethostbyname(local_name)->h_addr_list[0];
 
-	printf("myip=%s\n", inet_ntoa(my_addr));
+	printf("myip=%s\n", getMyLocalIpv4(fd).c_str());
 	
 	sendUdpMessage("Some test message haha!\n", fd, 0, tcs_address);
 	string recvd = receiveUdpMessage(fd, MAX_CHARS_UDP_PROTO_MESSAGE, 0, tcs_address).c_str(); 
