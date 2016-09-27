@@ -21,8 +21,12 @@
 #define MAX_WORDS 10
 #define MAX_SIZE_LANGUAGE 20
 #define MAX_LANGS 99
+#define MAX_COMPUTER_NAME 256 // Ask. Idunno.
+#define MAX_FILE_NAME  99 //idk
 
-int main(){	
+using namespace std;
+
+int main(int argc, char** argv){	
 	int fd;
 	socklen_t addrlen;
 	struct hostent* hostptr;
@@ -30,8 +34,35 @@ int main(){
 	char buffer[128], instruction[8];
 	char *message;
 	char languages[MAX_LANGS][MAX_SIZE_LANGUAGE], words[MAX_WORDS][MAX_SIZE_WORD];
+	int TRSport=TRSPORT;
+	string TCSname=TCSNAME;
 
+	//./user -n TCSname -p TCSport
 
+	if(argc < 1 || argc > 5)
+		printf("wrong input\n");
+	for(int i = 1; i < argc; i+=2){
+		if(argv[i][0] != '-')
+			printf("wrong input\n");
+
+		switch(argv[i][1]){
+			case 'p': // NEW TRSport
+				sscanf(argv[i+1], "%d", &TRSport);
+				printf("[!] - Custom TRS port set @ %d.\n", TRSport);
+				break;
+
+			case 'n': // NEW TCSname
+				char temp[MAX_COMPUTER_NAME];
+				sscanf(argv[i+1], "%s", temp);
+				printf("[!] - Custom TCS name set @ ");
+				cout << temp << endl;
+				TCSname = temp;
+				break;
+
+			default:
+				printf("wrong input\n");
+		}
+	}
 	
 	scanf("%s", instruction);
 	while(strcmp(instruction,"exit")){ 
@@ -72,6 +103,7 @@ int main(){
 					printf("%s\n",words[i]);
 				}
 			}else if(tf=='f'){
+				char filename[MAX_FILE_NAME];  //provavelmente sitiu mau pa declarar isto
 				scanf("%s",filename);
 			}
 
@@ -97,8 +129,12 @@ int main(){
 			}
 			
 		}else if (!strcmp(message,"UNR")){
+			char ipTRS[16];    //provavelmente sitiu mau pa declarar isto
+			int portTRS;
 			sscanf(buffer, "%s %d",ipTRS,&portTRS); //id é string num ou struct hostent*?
 			//inicio comunicacao com TRS usando TCP
+			int fd2;
+
 			/*int fd;
 			struct hostent* hostptr;
 			struct sockaddr_in serveraddr;
