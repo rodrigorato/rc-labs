@@ -129,12 +129,12 @@ int main(int argc, char const *argv[])
 			{
 				if (servers.size() == 0) // There are no servers available
 				{
-					if(sendto(fd, NO_SERVERS_ERROR, strlen(NO_SERVERS_ERROR) + 1 , 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send no available servers error
+					if(sendto(fd, NO_SERVERS_ERROR, strlen(NO_SERVERS_ERROR), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send no available servers error
 					exit(1);
 				}
 				else
 				{
-					if(sendto(fd, LIST_RESPONSE, strlen(LIST_RESPONSE) + 1 , 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send initial response
+					if(sendto(fd, LIST_RESPONSE, strlen(LIST_RESPONSE), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send initial response
 					exit(1);
 
 					if(sendto(fd, (const char*) servers.size(), sizeof(servers.size()), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send number of avaulabel servers
@@ -188,12 +188,12 @@ int main(int argc, char const *argv[])
 					servers.push_back(s);
 					cout << "Added: " <<  servers[servers.size()-1].language << ' ' << servers[servers.size()-1].ip_addr << ' ' << servers[servers.size()-1].port 
 					<< ' ' << servers.size() << endl;
-					if(sendto(fd, NEW_SERVER_OK, strlen(NEW_SERVER_OK) + 1 , 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to translation server
+					if(sendto(fd, NEW_SERVER_OK, strlen(NEW_SERVER_OK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to translation server
 						exit(1); 
 				}
 				else
 				{
-					if(sendto(fd, NEW_SERVER_NOK, strlen(NEW_SERVER_NOK) + 1, 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to translation server
+					if(sendto(fd, NEW_SERVER_NOK, strlen(NEW_SERVER_NOK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to translation server
 						exit(1); 
 				}
 
@@ -215,7 +215,7 @@ int main(int argc, char const *argv[])
 						servers.erase(servers.begin()+i);
 					}
 				}
-				if(sendto(fd, CLOSE_SERVER_OK, strlen(CLOSE_SERVER_OK) + 1, 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to removed server
+				if(sendto(fd, CLOSE_SERVER_OK, strlen(CLOSE_SERVER_OK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to removed server
 					exit(1);
 			}
 	}
