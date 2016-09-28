@@ -232,16 +232,27 @@ int main(int argc, char const *argv[])
 				int port_buffer;
 				sscanf(buffer,"%s %s %s %d\n", command, language_buffer, ip_buffer, &port_buffer); // get info from server
 
-				for (unsigned i = 0; i < servers.size(); ++i)
+
+
+				if (duplicateLanguage(servers,language_buffer))
 				{
-					if (!strcmp(servers[i].language,language_buffer) && servers[i].port == port_buffer && !strcmp(servers[i].ip_addr,ip_buffer)) // find server that matche sthe one to remove
-					{
-						cout << "Removed: " << servers[i].language << ' ' << servers[i].ip_addr << ' ' << servers[i].port << endl;
-						servers.erase(servers.begin()+i);
-					}
+					for (unsigned i = 0; i < servers.size(); ++i)
+						{
+							if (!strcmp(servers[i].language,language_buffer) && servers[i].port == port_buffer && !strcmp(servers[i].ip_addr,ip_buffer)) // find server that matche sthe one to remove
+								{
+									cout << "Removed: " << servers[i].language << ' ' << servers[i].ip_addr << ' ' << servers[i].port << endl;
+									servers.erase(servers.begin()+i);
+									if(sendto(fd, CLOSE_SERVER_OK, strlen(CLOSE_SERVER_OK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to removed server
+										exit(1);
+								}
+						}
 				}
-				if(sendto(fd, CLOSE_SERVER_OK, strlen(CLOSE_SERVER_OK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to removed server
-					exit(1);
+
+				else
+				{
+					if(sendto(fd, CLOSE_SERVER_NOK, strlen(CLOSE_SERVER_NOK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to removed server
+						exit(1);
+				}
 			}
 	}
 	return 0;
