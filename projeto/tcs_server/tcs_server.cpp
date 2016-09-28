@@ -94,7 +94,6 @@ int main(int argc, char const *argv[])
 	int fd; // file discriptor for socket
 	socklen_t addrlen;
 	struct sockaddr_in serveraddr, clientaddr;
-	char buffer[MAX_SIZE];		// buffer for command input
 	char command[MAX_SIZE];
 	vector<Server> servers;		// vector to hold server data
 
@@ -120,6 +119,8 @@ int main(int argc, char const *argv[])
 
 	while(1)
 	{
+		char buffer[MAX_SIZE] = "";		// buffer for command input
+
 		if (recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen) == -1) // get message from clients
 		exit(-1);
 
@@ -143,12 +144,19 @@ int main(int argc, char const *argv[])
 					stream << servers.size();
 					data += stream.str() + ' ';
 
+					cout << data << endl;
+
 					for (unsigned i = 0; i < servers.size(); ++i)
 					{
-						data += servers[i].language + ' ';
+						cout << servers[i].language << endl;
+						data.append(servers[i].language);
+						data += ' ';
+						cout << data << endl;
 					}
 
 					data += '\n';
+
+					cout << data;
 
 					if(sendto(fd, data.c_str(), strlen(data.c_str()), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send no available servers error
 					exit(1);
@@ -171,9 +179,14 @@ int main(int argc, char const *argv[])
 						if (!strcmp(servers[i].language,language_buffer))
 						{
 							data += servers[i].language;
-
-							stream << servers[i].port + ' ';
+							data += ' ';
+							data += servers[i].ip_addr;
+							data += ' ';
+							stream << servers[i].port;
 							data += stream.str();
+							data += ' ';
+							data += '\n';
+
 							if(sendto(fd, data.c_str(), strlen(data.c_str()), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send no available servers error
 								exit(1);
 
