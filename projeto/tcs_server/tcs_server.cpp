@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <string>
+#include <sstream>
 #include <string.h>
 #include <vector>
 
@@ -23,7 +24,7 @@
 #endif
 
 #ifndef LIST_RESPONSE
-#define LIST_RESPONSE "ULR"
+#define LIST_RESPONSE "ULR "
 #endif
 
 #ifndef CONNECT_REQUEST
@@ -31,15 +32,15 @@
 #endif
 
 #ifndef CONNECT_RETURN
-#define CONNECT_RETURN "UNR"
+#define CONNECT_RETURN "UNR "
 #endif
 
 #ifndef CONNECT_RETURN_UNKNOWN
-#define CONNECT_RETURN_UNKNOWN "UNR EOF"
+#define CONNECT_RETURN_UNKNOWN "UNR EOF\n"
 #endif
 
 #ifndef CONNECT_RETURN_ERROR
-#define CONNECT_RETURN_ERROR "UNR ERR"
+#define CONNECT_RETURN_ERROR "UNR ERR\n"
 #endif
 
 #ifndef NEW_SERVER
@@ -47,11 +48,11 @@
 #endif
 
 #ifndef NEW_SERVER_OK
-#define NEW_SERVER_OK "SRR OK"
+#define NEW_SERVER_OK "SRR OK\n"
 #endif
 
 #ifndef NEW_SERVER_NOK
-#define NEW_SERVER_NOK "SRR NOK"
+#define NEW_SERVER_NOK "SRR NOK\n"
 #endif
 
 #ifndef CLOSE_SERVER
@@ -59,15 +60,15 @@
 #endif
 
 #ifndef CLOSE_SERVER_OK
-#define CLOSE_SERVER_OK "SUN OK"
+#define CLOSE_SERVER_OK "SUN OK\n"
 #endif
 
 #ifndef CLOSE_SERVER_NOK
-#define CLOSE_SERVER_NOK "SUN NOK"
+#define CLOSE_SERVER_NOK "SUN NOK\n"
 #endif
 
 #ifndef NO_SERVERS_ERROR
-#define NO_SERVERS_ERROR "ULR EOF"
+#define NO_SERVERS_ERROR "ULR EOF\n"
 #endif
 
 
@@ -125,7 +126,7 @@ int main(int argc, char const *argv[])
 
 		sscanf(buffer, "%s",command); // determine the received command
 
-		cout << buffer << endl;
+		cout << buffer;
 
 		if (!strcmp(command,LIST_REQUEST))		// list command processing
 			{
@@ -136,17 +137,21 @@ int main(int argc, char const *argv[])
 				}
 				else
 				{
-					if(sendto(fd, LIST_RESPONSE, strlen(LIST_RESPONSE), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send initial response
-					exit(1);
+					string data = LIST_RESPONSE;
+					stringstream stream;
 
-					if(sendto(fd, (const char*) servers.size(), sizeof(servers.size()), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send number of avaulabel servers
-					exit(1);
+					stream << servers.size();
+					data += stream.str() + ' ';
 
-					for (unsigned i = 0; i < servers.size(); ++i) //send the language of all available servers
-						{
-							if(sendto(fd, servers[i].language, strlen(servers[i].language), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) 
-								exit(1);
-						}
+					for (unsigned i = 0; i < servers.size(); ++i)
+					{
+						data += servers[i].language + ' ';
+					}
+
+					data += '\n';
+
+					if(sendto(fd, data.c_str(), strlen(data.c_str()), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send no available servers error
+					exit(1);
 
 				}
 				
@@ -154,6 +159,8 @@ int main(int argc, char const *argv[])
 		else if (!strcmp(command,CONNECT_REQUEST)) // translator connection request
 			{
 				char language_buffer[20];
+				string data = CONNECT_RETURN;
+				stringstream stream;
 				
 				sscanf(buffer,"%s %s\n", command, language_buffer);
 
@@ -163,10 +170,13 @@ int main(int argc, char const *argv[])
 					{
 						if (!strcmp(servers[i].language,language_buffer))
 						{
-							if(sendto(fd, servers[i].ip_addr, strlen(servers[i].ip_addr), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) 
+							data += servers[i].language;
+
+							stream << servers[i].port + ' ';
+							data += stream.str();
+							if(sendto(fd, data.c_str(), strlen(data.c_str()), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send no available servers error
 								exit(1);
-							if(sendto(fd, (char*)servers[i].port, sizeof(servers[i].port), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) 
-								exit(1);
+
 						}
 					}
 				}
