@@ -181,7 +181,7 @@ int main(int argc, char* argv[]){
 	
 	// Writes out the current session data.
 	if(gethostname(local_name, MAX_COMPUTER_NAME - 1) == -1) printSysCallFailed();
-	printf("[%s:%d] - Now serving \'%s\' for ", local_name, TRSport, lang_name);
+	printf("[%s:%d] - Now serving the \'%s\' language for the TCS server at ", local_name, TRSport, lang_name);
 	cout << TCSname;
 	printf(":%d.\n", TCSport);
 
@@ -221,7 +221,7 @@ int main(int argc, char* argv[]){
 
 	//Registered with the TCS successfully
 	printf("Success!\n");
-
+	
 	// Now accepting connections from the users, starting the TCP server
 	int user_serversocket_fd, user_connsocket_fd;
 	struct sockaddr_in my_addr, user_addr;
@@ -229,7 +229,7 @@ int main(int argc, char* argv[]){
 	char buffer[128];
 
 	
-	printf("[%s:%d] - Will now try to create a UDP socket... ", local_name, TRSport); fflush(stdout);
+	printf("[%s:%d] - Will now try to create a TCP socket... ", local_name, TRSport); fflush(stdout);
 	if((user_serversocket_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) exit(1);
 	printf("Success!\n");
 	
@@ -251,21 +251,35 @@ int main(int argc, char* argv[]){
 	useraddr_len = sizeof(user_addr);
 
 	printf("[%s:%d] - Ready to accept connections from users.\n", local_name, TRSport);
-	
-	if((user_connsocket_fd = accept(user_serversocket_fd, (struct sockaddr*) &user_addr, &useraddr_len)) == -1) exit(1);
-	
 
-	
-	int read_bytes = 0;
-	if((read_bytes = read(user_connsocket_fd, buffer, 128))== -1) exit(1);
-	buffer[read_bytes] = '\0';
-	printf("Received message:\n%s\n", buffer); 
+	while(true){ // for now...
+		int forkId = -1;
+		if((user_connsocket_fd = accept(user_serversocket_fd, (struct sockaddr*) &user_addr, &useraddr_len)) == -1) exit(1);
 
-	if(write(user_connsocket_fd, buffer, strlen(buffer)) == -1) exit(1);
-	printf("Sent message:\n%s\n", buffer);	
+		forkId = fork();
 
+		if(forkId == -1)
+			printSysCallFailed();
+		else if(forkId == 0){
+			// child proc code
+			int read_bytes = 0;
+			if((read_bytes = read(user_connsocket_fd, buffer, 128))== -1) exit(1);
+			buffer[read_bytes] = '\0';
+			printf("Received message:\n%s\n", buffer); 
+
+			if(write(user_connsocket_fd, buffer, strlen(buffer)) == -1) exit(1);
+			printf("Sent message:\n%s\n", buffer);	
+			close(user_connsocket_fd);
+			exit(0);
+		}
+		else{
+			// parent code
+		}
+
+	}
 	close(user_serversocket_fd);
-	close(user_connsocket_fd);
+	
+	
 	
 	// Unregistering with the TCS so we can exit
 	printf("[%s:%d] - Telling the TCS that we are going offline.\n", local_name, TRSport);
