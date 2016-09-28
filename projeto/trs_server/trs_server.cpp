@@ -25,14 +25,13 @@
 // C++ Headers/libs
 #include <iostream>
 #include <string>
+#include <sstream>
  
 
 // Default values
 #define TRSPORT_CONST 59000
 #define TCSNAME_CONST "localhost"
 #define TCSPORT_CONST (58000 + GN)
-
-#define TERM_CHAR '\n'
 
 #define MAX_CHARS_PER_WORD 30
 #define MAX_NUM_WORDS_PER_COMMAND 10
@@ -41,6 +40,9 @@
 #define MAX_CHARS_UDP_PROTO_MESSAGE 256
 
 #define MAX_COMPUTER_NAME 25 // Ask. Idunno.
+
+// Protocol Messages
+#define TERM_CHAR '\n'
 
 
 using namespace std;
@@ -94,24 +96,29 @@ string receiveUdpMessage(int socket_fd, int buffersize, int flags, sockaddr_in s
 		return final_message;
 }
 
-string getMyLocalIpv4(int socket_fd){
-    struct ifreq ifr;
-     
-    char iface[] = "ens33";
-     
-    //Type of address to retrieve - IPv4 IP address
-    ifr.ifr_addr.sa_family = AF_INET;
- 
-    //Copy the interface name in the ifreq structure
-    strncpy(ifr.ifr_name , iface , IFNAMSIZ-1);
- 
-    ioctl(socket_fd, SIOCGIFADDR, &ifr);
+string getMyIp(int buffersize){
+    struct hostent *h;
+	struct in_addr *a;
+	char buffer[buffersize];
+	string ip;
 
-    string to_return = (inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
-    return to_return;
+	gethostname(buffer, buffersize);
+	if((h=gethostbyname(buffer))==NULL)exit(1);//error
+
+	a=(struct in_addr*)h->h_addr_list[0];
+	ip = inet_ntoa(*a);
+    return ip;
 }
 
-//string getTCSRegisterMessage(string language, )
+string registerWithTCS(int socket_fd, sockaddr_in src_addr, int flags, string language, string ourIP, int ourPort){
+	stringstream temp; temp << ourPort;
+	string port_str = temp.str();
+	string srg_message = "SRG " + language + " " + ourIP + " " + port_str + TERM_CHAR;
+	sendUdpMessage(srg_message, socket_fd, 0, src_addr);
+
+	return receiveUdpMessage(socket_fd, MAX_CHARS_UDP_PROTO_MESSAGE, flags, src_addr);
+
+}
 
 
 int main(int argc, char* argv[]){
@@ -125,7 +132,6 @@ int main(int argc, char* argv[]){
 	int fd;
 	struct hostent* tcs_ptr;
 	struct sockaddr_in tcs_address;
-	struct in_addr my_addr;
 
 	// Parse the arguments and the the variables accordingly.
 	if(argc < 2 || argc > 8)
@@ -183,12 +189,9 @@ int main(int argc, char* argv[]){
 
 	// Done setting up, will now warn TCS that we're live.
 	printf("[%s:%d] - Telling the TCS that we are live.\n", local_name, TRSport);
-	//sendUdpMessage()
-	//my_addr.s_addr = *gethostbyname(local_name)->h_addr_list[0];
+	printf("%s.END.\n", registerWithTCS(fd, tcs_address, 0, lang_name, getMyIp(MAX_COMPUTER_NAME).c_str(), TRSport).c_str());
 
-	printf("myip=%s\n", getMyLocalIpv4(fd).c_str());
 	
-	sendUdpMessage("Some test message haha!\n", fd, 0, tcs_address);
 	string recvd = receiveUdpMessage(fd, MAX_CHARS_UDP_PROTO_MESSAGE, 0, tcs_address).c_str(); 
 
 	close(fd);
