@@ -114,7 +114,8 @@ string registerWithTCS(int socket_fd, sockaddr_in src_addr, int flags, string la
 	stringstream temp; temp << ourPort;
 	string port_str = temp.str();
 	string srg_message = "SRG " + language + " " + ourIP + " " + port_str + TERM_CHAR;
-	sendUdpMessage(srg_message, socket_fd, 0, src_addr);
+	cout << srg_message.c_str() << endl;
+	sendUdpMessage(srg_message.c_str(), socket_fd, 0, src_addr);
 
 	return receiveUdpMessage(socket_fd, MAX_CHARS_UDP_PROTO_MESSAGE, flags, src_addr);
 
