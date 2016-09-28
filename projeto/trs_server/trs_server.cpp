@@ -43,6 +43,9 @@
 
 // Protocol Messages
 #define TERM_CHAR '\n'
+#define TCS_OK "SRR OK\n"
+#define TCS_NOK "SRR NOK\n"
+#define TCS_ERR "SRR ERR\n"
 
 
 using namespace std;
@@ -111,14 +114,12 @@ string getMyIp(int buffersize){
 }
 
 string registerWithTCS(int socket_fd, sockaddr_in src_addr, int flags, string language, string ourIP, int ourPort){
+	// Registers this TRS with the main TCS server and returns the answer.
 	stringstream temp; temp << ourPort;
 	string port_str = temp.str();
 	string srg_message = "SRG " + language + " " + ourIP + " " + port_str + TERM_CHAR;
-	cout << srg_message.c_str() << endl;
-	sendUdpMessage(srg_message.c_str(), socket_fd, 0, src_addr);
-
+	sendUdpMessage(srg_message.c_str(), socket_fd, 0, src_addr); // Sends the SRG request
 	return receiveUdpMessage(socket_fd, MAX_CHARS_UDP_PROTO_MESSAGE, flags, src_addr);
-
 }
 
 
@@ -190,10 +191,29 @@ int main(int argc, char* argv[]){
 
 	// Done setting up, will now warn TCS that we're live.
 	printf("[%s:%d] - Telling the TCS that we are live.\n", local_name, TRSport);
-	printf("%s.END.\n", registerWithTCS(fd, tcs_address, 0, lang_name, getMyIp(MAX_COMPUTER_NAME).c_str(), TRSport).c_str());
+	string TCSresp;
+	while((TCSresp = registerWithTCS(fd, tcs_address, 0, lang_name, getMyIp(MAX_COMPUTER_NAME), TRSport)) != TCS_OK){
+		// Failed to register with the TCS
+		if (TCSresp == TCS_NOK){
+			// Due to NOK message
+			printf("NOK\n"); exit(1);
+
+		} else if (TCSresp == TCS_ERR){
+			// Due to ERR message
+			printf("ERR\n"); exit(1);
+		} else{
+			// Due to protocol error
+			printf("PROTO ERR\n"); exit(1);
+		}
+	}
+
+	//Registered with the TCS successfully
+	printf("[%s:%d] - Successfully registered with the TRS.\n", local_name, TRSport);
 
 	
-	string recvd = receiveUdpMessage(fd, MAX_CHARS_UDP_PROTO_MESSAGE, 0, tcs_address).c_str(); 
+
+	
+	//string recvd = receiveUdpMessage(fd, MAX_CHARS_UDP_PROTO_MESSAGE, 0, tcs_address).c_str(); 
 
 	close(fd);
 	return 0;
