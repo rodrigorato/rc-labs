@@ -40,13 +40,16 @@
 #define MAX_CHARS_UDP_PROTO_MESSAGE 256
 
 #define MAX_COMPUTER_NAME 25 // Ask. Idunno.
+#define MAX_USER_BACKLOG 5
 
 // Protocol Messages
 #define TERM_CHAR '\n'
-#define TCS_OK "SRR OK\n"
-#define TCS_NOK "SRR NOK\n"
-#define TCS_ERR "SRR ERR\n"
-
+#define TCS_SRR_OK "SRR OK\n"
+#define TCS_SRR_NOK "SRR NOK\n"
+#define TCS_SRR_ERR "SRR ERR\n"
+#define TCS_SUN_OK "SUR OK\n"
+#define TCS_SUN_NOK "SUR NOK\n"
+#define TCS_SUN_ERR "SUR ERR\n"
 
 using namespace std;
 
@@ -122,6 +125,16 @@ string registerWithTCS(int socket_fd, sockaddr_in src_addr, int flags, string la
 	return receiveUdpMessage(socket_fd, MAX_CHARS_UDP_PROTO_MESSAGE, flags, src_addr);
 }
 
+string unregisterWithTCS(int socket_fd, sockaddr_in src_addr, int flags, string language, string ourIP, int ourPort){
+	// Registers this TRS with the main TCS server and returns the answer.
+	stringstream temp; temp << ourPort;
+	string port_str = temp.str();
+	string srg_message = "SUN " + language + " " + ourIP + " " + port_str + TERM_CHAR;
+	sendUdpMessage(srg_message.c_str(), socket_fd, 0, src_addr); // Sends the SRG request
+	return receiveUdpMessage(socket_fd, MAX_CHARS_UDP_PROTO_MESSAGE, flags, src_addr);
+}
+
+
 
 int main(int argc, char* argv[]){
 	// TRS config variables.
@@ -131,7 +144,7 @@ int main(int argc, char* argv[]){
 	char local_name[MAX_COMPUTER_NAME]; local_name[MAX_COMPUTER_NAME - 1] = '\0';
 
 	// Socket variables.
-	int fd;
+	int TCS_socket_fd;
 	struct hostent* tcs_ptr;
 	struct sockaddr_in tcs_address;
 
@@ -173,48 +186,107 @@ int main(int argc, char* argv[]){
 	printf(":%d.\n", TCSport);
 
 	// Attempts to get a socket for an UDP connection with the TCS.
-	printf("[%s:%d] - Will now try to create a socket.\n", local_name, TRSport);
-	if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) printSysCallFailed();
-	printf("[%s:%d] - Successfully created the socket.\n", local_name, TRSport);
+	printf("[%s:%d] - Will now try to create a UDP socket... ", local_name, TRSport); fflush(stdout);
+	if((TCS_socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) printSysCallFailed();
+	printf("Success!\n");
 
 	tcs_ptr = gethostbyname(TCSname.c_str());
 	if(tcs_ptr == NULL)
 		printSysCallFailed();
 
 
-	printf("[%s:%d] - Setting up socket settings.\n", local_name, TRSport);
+	printf("[%s:%d] - Setting up socket settings... ", local_name, TRSport); fflush(stdout);
 	memset((void*)&tcs_address, (int)'\0', sizeof(tcs_address)); // Clears tcs_address's struct
 	tcs_address.sin_family = AF_INET; // Setting up the socket's struct
 	tcs_address.sin_addr.s_addr = ((struct in_addr*) (tcs_ptr->h_addr_list[0]))->s_addr; // THIS IS FAILING!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!	
 	tcs_address.sin_port = htons((u_short)TCSport); 
-	printf("[%s:%d] - Socket has been initialized successfully.\n", local_name, TRSport);
+	printf("Success!\n");
 
 	// Done setting up, will now warn TCS that we're live.
-	printf("[%s:%d] - Telling the TCS that we are live.\n", local_name, TRSport);
+	printf("[%s:%d] - Telling the TCS that we are live... ", local_name, TRSport); fflush(stdout);
 	string TCSresp;
-	while((TCSresp = registerWithTCS(fd, tcs_address, 0, lang_name, getMyIp(MAX_COMPUTER_NAME), TRSport)) != TCS_OK){
+	while((TCSresp = registerWithTCS(TCS_socket_fd, tcs_address, 0, lang_name, getMyIp(MAX_COMPUTER_NAME), TRSport)) != TCS_SRR_OK){
 		// Failed to register with the TCS
-		if (TCSresp == TCS_NOK){
+		if (TCSresp == TCS_SRR_NOK){
 			// Due to NOK message
-			printf("NOK\n"); exit(1);
-
-		} else if (TCSresp == TCS_ERR){
+			printf("NOK\n");
+		} else if (TCSresp == TCS_SRR_ERR){
 			// Due to ERR message
-			printf("ERR\n"); exit(1);
+			printf("ERR\n");
 		} else{
-			// Due to protocol error
-			printf("PROTO ERR\n"); exit(1);
+			// Due to protocol error	
+			printf("PROTO ERR\n");
 		}
 	}
 
 	//Registered with the TCS successfully
-	printf("[%s:%d] - Successfully registered with the TRS.\n", local_name, TRSport);
+	printf("Success!\n");
 
+	// Now accepting connections from the users, starting the TCP server
+	int user_serversocket_fd, user_connsocket_fd;
+	struct sockaddr_in my_addr, user_addr;
+	socklen_t useraddr_len;
+	char buffer[128];
+
+	
+	printf("[%s:%d] - Will now try to create a UDP socket... ", local_name, TRSport); fflush(stdout);
+	if((user_serversocket_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) exit(1);
+	printf("Success!\n");
+	
+	printf("[%s:%d] - Setting up socket settings... ", local_name, TRSport); fflush(stdout);
+	memset((void*)&my_addr, (int)'\0', sizeof(my_addr));
+	my_addr.sin_family = AF_INET;
+	my_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	my_addr.sin_port = htons((u_short)TRSport);
+	printf("Success!\n");
+	
+	printf("[%s:%d] - Binding the TCP socket to our network name... ", local_name, TRSport); fflush(stdout);
+	if(bind(user_serversocket_fd, (struct sockaddr*) &my_addr, sizeof(my_addr)) == -1) exit(1);
+	printf("Success!\n");
+
+	printf("[%s:%d] - Starting to listen to connections on the TCP socket... ", local_name, TRSport); fflush(stdout);
+	if(listen(user_serversocket_fd, MAX_USER_BACKLOG) == -1) exit(1);
+	printf("Success!\n");
+	
+	useraddr_len = sizeof(user_addr);
+
+	printf("[%s:%d] - Ready to accept connections from users.\n", local_name, TRSport);
+	
+	if((user_connsocket_fd = accept(user_serversocket_fd, (struct sockaddr*) &user_addr, &useraddr_len)) == -1) exit(1);
 	
 
 	
-	//string recvd = receiveUdpMessage(fd, MAX_CHARS_UDP_PROTO_MESSAGE, 0, tcs_address).c_str(); 
+	int read_bytes = 0;
+	if((read_bytes = read(user_connsocket_fd, buffer, 128))== -1) exit(1);
+	buffer[read_bytes] = '\0';
+	printf("Received message:\n%s\n", buffer); 
 
-	close(fd);
+	if(write(user_connsocket_fd, buffer, strlen(buffer)) == -1) exit(1);
+	printf("Sent message:\n%s\n", buffer);	
+
+	close(user_serversocket_fd);
+	close(user_connsocket_fd);
+	
+	// Unregistering with the TCS so we can exit
+	printf("[%s:%d] - Telling the TCS that we are going offline.\n", local_name, TRSport);
+	while((TCSresp = unregisterWithTCS(TCS_socket_fd, tcs_address, 0, lang_name, getMyIp(MAX_COMPUTER_NAME), TRSport)) != TCS_SUN_OK){
+		// Failed to register with the TCS
+		if (TCSresp == TCS_SUN_NOK){
+			// Due to NOK message
+			printf("NOK\n");
+
+		} else if (TCSresp == TCS_SUN_ERR){
+			// Due to ERR message
+			printf("ERR\n");
+		} else{
+			// Due to protocol error	
+			printf("PROTO ERR\n");
+		}
+	}
+	// Successfully unregistered with the TCS
+	printf("[%s:%d] - Successfully unregistered with the TRS.\n", local_name, TRSport);
+
+	printf("[%s:%d] - All done, now exiting.\n", local_name, TRSport);
+	close(TCS_socket_fd);
 	return 0;
 }

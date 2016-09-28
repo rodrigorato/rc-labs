@@ -11,7 +11,6 @@
 
 int main(){	
 	int fd, clientlen, newfd;
-	struct hostent* hostptr;
 	struct sockaddr_in serveraddr, clientaddr;
 	char buffer[128];	
 	
