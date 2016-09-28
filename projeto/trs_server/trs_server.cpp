@@ -97,7 +97,7 @@ string receiveUdpMessage(int socket_fd, int buffersize, int flags, sockaddr_in s
 string getMyLocalIpv4(int socket_fd){
     struct ifreq ifr;
      
-    char iface[] = "eth0";
+    char iface[] = "ens33";
      
     //Type of address to retrieve - IPv4 IP address
     ifr.ifr_addr.sa_family = AF_INET;

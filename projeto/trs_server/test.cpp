@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <netdb.h>
+#include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -8,11 +9,16 @@
 int main(){
 	struct hostent *h;
 	struct in_addr *a;
-	if((h=gethostbyname("localhost"))==NULL)exit(1);//error
+	char buffer[128];
+	gethostname(buffer, 128);
+	if((h=gethostbyname(buffer))==NULL)exit(1);//error
 	
 	printf("official host name: %s\n",h->h_name);
 	
 	a=(struct in_addr*)h->h_addr_list[0];
-	printf("internet address: %s (%08lX)\n",inet_ntoa(*a), ntohl(a->s_addr));
+	printf("internet address: %s 0x%X\n",inet_ntoa(*a), ntohl(a->s_addr));
+	
+	
+	
 	exit(0);
 }
