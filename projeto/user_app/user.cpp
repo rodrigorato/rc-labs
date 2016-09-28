@@ -91,18 +91,16 @@ int main(int argc, char** argv){
 			scanf("%d %c", &langNum, &tf );
 
 			//UNQ + language   languages[langNum-1]
-			string message2="UNQ";
+			string message2="UNQ ";
 			string temp= languages[langNum-1];
 			message2+=temp;
 			message2+='\n';
-			/*char message2[4+MAX_SIZE_LANGUAGE+1] = "UNQ ";// necessario espaco pa \n?
-			strcat(message2, languages[langNum-1]);
-			strcat(message2, '\n');*/
+
 			if(sendto(fd, message2.c_str(), message2.length() + 1, 0, (struct sockaddr*) &serveraddr, addrlen) == -1) exit(1);
 			printf("Sent message: %s", message2.c_str());//UNQ language
 			if(tf=='t'){
 				scanf("%d", &numWords);
-				printf("Palavras a imprimir para %s:\n",languages[langNum-1]);
+				printf("Palavras a traduzir para %s:\n",languages[langNum-1]);
 				for(int i=0; i<numWords;i++){
 					scanf("%s",words[i]);
 					printf("%s\n",words[i]);
@@ -113,10 +111,10 @@ int main(int argc, char** argv){
 			}
 
 		}
-			
-		if(recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &serveraddr, &addrlen) == -1) exit(1);
-		printf("Received message\n"); 
-		printf("buffer: %s\n",buffer );
+		int num_bytes=0;
+		if((num_bytes=recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &serveraddr, &addrlen)) == -1) exit(1);
+		buffer[num_bytes]='\0';
+		printf("Received message:\n%s\n",buffer); 
 
 		sscanf(buffer,"%s", message);
 		if(buffer[4]=='E'){ // TCS devolve mensagem de erro
@@ -127,11 +125,23 @@ int main(int argc, char** argv){
 		}else if(!strcmp(message,"ULR")){    //ULR , resposta ao pedido de linguas
 			int numLangs;
 			sscanf(buffer,"%s %d",message, &numLangs);
-			printf("Languages available:\n");
-			for(int i=0; i<numLangs;i++){
+			printf("Languages available:\n");/*
+			for(int i=0; i<numLangs;i++){//                  ULR 3 frances ingles whatever
 
 				sscanf(buffer,"%s %d %s",message,&numLangs,languages[i]);
 				printf("%d - %s\n", i+1, languages[i]);
+			}*/
+			int i, j;
+			if(numLangs>9) i=7;
+			else i=6;
+			
+			for(int l=0; l<numLangs;l++){
+				for (j=0; buffer[i]!=' ' && buffer[i]!='\n' /*&& buffer[i]!='\0'*/;j++,i++)
+					languages[l][j]=buffer[i];
+				
+				languages[l][j]='\0'; 
+				i++;
+				printf("%d - %s\n", l+1, languages[l]);
 			}
 			
 		}else if (!strcmp(message,"UNR")){
@@ -146,14 +156,14 @@ int main(int argc, char** argv){
 			char buffer2[128];
 
 			if((fd2 = socket(AF_INET, SOCK_STREAM, 0)) == -1) exit(1);
-			hostptr2=gethostbyaddr(ipTRS, sizeof(ipTRS),AF_INET);
+			if((hostptr2=gethostbyname(ipTRS))==NULL) printf("nope\n");
 
 			memset((void*)&serveraddr2, (int)'\0', sizeof(serveraddr2));
 			serveraddr2.sin_family = AF_INET;
-			serveraddr2.sin_addr.s_addr = ((struct in_addr*) (hostptr2->h_addr_list[0]))->s_addr;
+			serveraddr2.sin_addr.s_addr = ((struct in_addr*) (hostptr2->h_addr_list[0]))->s_addr;//seg fault
 			serveraddr2.sin_port = htons((u_short)portTRS);
 
-			if(connect(fd2, (struct sockaddr*) &serveraddr2, sizeof(serveraddr2)) == -1) exit(1);
+			if(connect(fd2, (struct sockaddr*) &serveraddr2, sizeof(serveraddr2)) == -1) exit(1);//ta testado ate aqui pk nao trs
 			printf("Connected successfully\n");
 
 			if(tf=='t'){
@@ -172,7 +182,7 @@ int main(int argc, char** argv){
 
 			if(read(fd2, buffer2, 128) == -1) exit(1);
 			printf("Received message:\n%s\n", buffer2); 
-
+			
 			close(fd2);
 
 		}
