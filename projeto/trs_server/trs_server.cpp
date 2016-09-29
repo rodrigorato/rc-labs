@@ -26,6 +26,8 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <list>
+#include <fstream>
  
 
 // Default values
@@ -38,6 +40,7 @@
 #define MAX_LANGS_PER_INSTANCE 99
 #define MAX_CHARS_PER_LANGNAME 20
 #define MAX_CHARS_UDP_PROTO_MESSAGE 256
+#define MAX_CHARS_TCP_PROTO_MESSAGE 256
 
 #define MAX_COMPUTER_NAME 25 // Ask. Idunno.
 #define MAX_USER_BACKLOG 5
@@ -134,7 +137,9 @@ string unregisterWithTCS(int socket_fd, sockaddr_in src_addr, int flags, string 
 	return receiveUdpMessage(socket_fd, MAX_CHARS_UDP_PROTO_MESSAGE, flags, src_addr);
 }
 
-
+string getTranslation(string word){
+	return "le_" + word;
+}
 
 int main(int argc, char* argv[]){
 	// TRS config variables.
@@ -226,11 +231,11 @@ int main(int argc, char* argv[]){
 	int user_serversocket_fd, user_connsocket_fd;
 	struct sockaddr_in my_addr, user_addr;
 	socklen_t useraddr_len;
-	char buffer[128];
+	char buffer[MAX_CHARS_TCP_PROTO_MESSAGE];
 
 	
 	printf("[%s:%d] - Will now try to create a TCP socket... ", local_name, TRSport); fflush(stdout);
-	if((user_serversocket_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) exit(1);
+	if((user_serversocket_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) printSysCallFailed();
 	printf("Success!\n");
 	
 	printf("[%s:%d] - Setting up socket settings... ", local_name, TRSport); fflush(stdout);
@@ -241,20 +246,21 @@ int main(int argc, char* argv[]){
 	printf("Success!\n");
 	
 	printf("[%s:%d] - Binding the TCP socket to our network name... ", local_name, TRSport); fflush(stdout);
-	if(bind(user_serversocket_fd, (struct sockaddr*) &my_addr, sizeof(my_addr)) == -1) exit(1);
+	if(bind(user_serversocket_fd, (struct sockaddr*) &my_addr, sizeof(my_addr)) == -1) printSysCallFailed();
 	printf("Success!\n");
 
 	printf("[%s:%d] - Starting to listen to connections on the TCP socket... ", local_name, TRSport); fflush(stdout);
-	if(listen(user_serversocket_fd, MAX_USER_BACKLOG) == -1) exit(1);
+	if(listen(user_serversocket_fd, MAX_USER_BACKLOG) == -1) printSysCallFailed();
 	printf("Success!\n");
 	
 	useraddr_len = sizeof(user_addr);
 
 	printf("[%s:%d] - Ready to accept connections from users.\n", local_name, TRSport);
 
-	while(true){ // for now...
+	bool continueListening = true;
+	while(continueListening){ // for now...
 		int forkId = -1;
-		if((user_connsocket_fd = accept(user_serversocket_fd, (struct sockaddr*) &user_addr, &useraddr_len)) == -1) exit(1);
+		if((user_connsocket_fd = accept(user_serversocket_fd, (struct sockaddr*) &user_addr, &useraddr_len)) == -1) printSysCallFailed();
 
 		forkId = fork();
 
@@ -262,18 +268,55 @@ int main(int argc, char* argv[]){
 			printSysCallFailed();
 		else if(forkId == 0){
 			// child proc code
+			    printf("port number %d\n", ntohs(user_addr.sin_port));
+			    struct in_addr user_socket_inaddr = user_addr  sin_addr; 
 			int read_bytes = 0;
-			if((read_bytes = read(user_connsocket_fd, buffer, 128))== -1) exit(1);
+			if((read_bytes = read(user_connsocket_fd, buffer, 128))== -1) printSysCallFailed();
 			buffer[read_bytes] = '\0';
-			printf("Received message:\n%s\n", buffer); 
 
-			if(write(user_connsocket_fd, buffer, strlen(buffer)) == -1) exit(1);
+			stringstream cmd; cmd << buffer;
+			string temp; cmd >> temp;
+
+			if(temp == "TRQ"){
+				cmd >> temp;
+				if(temp == "t"){
+					// Text translation
+					cmd >> temp; // temp should contain a number >0 and <=30
+					int numWords = atoi(temp.c_str());
+					if(numWords >= 0 && numWords <= 30){
+						// Read the words
+						list<string> wordsToTranslate;
+						for(int i = 0; i < numWords; i++){
+							cmd >> temp;
+							wordsToTranslate.push_back(temp);
+						}
+						
+						while(!wordsToTranslate.empty()){
+							// Do the actual translation and build the translated words list
+							getTranslation(wordsToTranslate.front());
+							wordsToTranslate.pop_front();
+						}
+
+					} else printf("PROTO ERR\n");
+
+				} else if(temp == "f"){
+					// File translation
+
+				} else printf("PROTO ERR\n");
+			}
+
+
+			if(write(user_connsocket_fd, buffer, strlen(buffer)) == -1) printSysCallFailed();
 			printf("Sent message:\n%s\n", buffer);	
 			close(user_connsocket_fd);
 			exit(0);
 		}
 		else{
 			// parent code
+			char temp_command[MAX_CHARS_PER_WORD];
+			scanf("%s", temp_command);
+			if(!strcmp(temp_command, "exit")) continueListening = false;
+
 		}
 
 	}
