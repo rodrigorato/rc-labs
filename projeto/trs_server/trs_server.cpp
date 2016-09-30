@@ -143,6 +143,12 @@ string getTranslation(string word){
 	return "le_" + word;
 }
 
+string intToString(int num){
+	ostringstream s;
+	s << num;
+	return s.str();
+}
+
 int main(int argc, char* argv[]){
 	// TRS config variables.
 	int TRSport = TRSPORT_CONST, TCSport = TCSPORT_CONST;
@@ -263,18 +269,20 @@ int main(int argc, char* argv[]){
 	while(continueListening){ // for now...
 		int forkId = -1;
 		if((user_connsocket_fd = accept(user_serversocket_fd, (struct sockaddr*) &user_addr, &useraddr_len)) == -1) printSysCallFailed();
-
+		printf("acc!\n");
+		struct hostent* he = gethostbyaddr(&user_addr.sin_addr, sizeof user_addr.sin_addr, AF_INET);
+		string userNameAndPort = (he->h_name); userNameAndPort += ":"; userNameAndPort += intToString(ntohs(user_addr.sin_port));
+		string userAddrAndPort = (inet_ntoa(user_addr.sin_addr)); userAddrAndPort += ":"; userAddrAndPort += intToString(ntohs(user_addr.sin_port));
+		printf("[%s:%d] - Accepted connection from user at %s (%s).\n", local_name, TRSport, 
+									userNameAndPort.c_str(), 
+									userAddrAndPort.c_str());
 		forkId = fork();
 
 		if(forkId == -1)
 			printSysCallFailed();
 		else if(forkId == 0){
 			// child proc code
-			    printf("port number %d\n", ntohs(user_addr.sin_port));
-			    //struct in_addr user_socket_inaddr = user_addr.sin_addr; 
-			    printf("address %s\n", inet_ntoa(user_addr.sin_addr));
-			    struct hostent* he = gethostbyaddr(&user_addr.sin_addr, sizeof user_addr.sin_addr, AF_INET);
-				printf("Host name: %s\n", he->h_name);
+
 			int read_bytes = 0;
 			if((read_bytes = read(user_connsocket_fd, buffer, 128))== -1) printSysCallFailed();
 			buffer[read_bytes] = '\0';
