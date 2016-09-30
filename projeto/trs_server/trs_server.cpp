@@ -273,6 +273,8 @@ int main(int argc, char* argv[]){
 			    printf("port number %d\n", ntohs(user_addr.sin_port));
 			    //struct in_addr user_socket_inaddr = user_addr.sin_addr; 
 			    printf("address %s\n", inet_ntoa(user_addr.sin_addr));
+			    struct hostent* he = gethostbyaddr(&user_addr.sin_addr, sizeof user_addr.sin_addr, AF_INET);
+				printf("Host name: %s\n", he->h_name);
 			int read_bytes = 0;
 			if((read_bytes = read(user_connsocket_fd, buffer, 128))== -1) printSysCallFailed();
 			buffer[read_bytes] = '\0';
