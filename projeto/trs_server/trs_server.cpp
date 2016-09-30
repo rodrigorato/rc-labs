@@ -107,6 +107,22 @@ string receiveUdpMessage(int socket_fd, int buffersize, int flags, sockaddr_in s
 		return final_message;
 }
 
+string receiveTcpMessage(int socketFd, int bufferSize){
+	int read_bytes = 0;
+	char buffer[bufferSize];
+	string message;
+	if((read_bytes = read(socketFd, buffer, bufferSize)) == -1) 
+		printSysCallFailed();
+	buffer[read_bytes] = '\0';
+	message = buffer;
+	return message;
+}
+
+void sendTcpMessage(int socketFd, string message){
+	if(write(socketFd, message.c_str(), strlen(message.c_str())) == -1) 
+		printSysCallFailed();
+}
+
 string getMyIp(int buffersize){
     struct hostent *h;
 	struct in_addr *a;
@@ -239,7 +255,6 @@ int main(int argc, char* argv[]){
 	int user_serversocket_fd, user_connsocket_fd;
 	struct sockaddr_in my_addr, user_addr;
 	socklen_t useraddr_len;
-	char buffer[MAX_CHARS_TCP_PROTO_MESSAGE];
 
 	
 	printf("[%s:%d] - Will now try to create a TCP socket... ", local_name, TRSport); fflush(stdout);
@@ -291,18 +306,12 @@ int main(int argc, char* argv[]){
 			printSysCallFailed();
 		else if(forkId == 0){
 			// Child process code, tries to read the user's request
-			int read_bytes = 0;
-			if((read_bytes = read(user_connsocket_fd, buffer, MAX_CHARS_TCP_PROTO_MESSAGE))== -1) printSysCallFailed();
-			buffer[read_bytes] = '\0';
+			
 
+			//string receiveTcpMessage(int socketFd, int bufferSize)
+			//void sendTcpMessage(int socketFd, string message)
 
-
-			string receiveTcpMessage()
-
-
-
-
-			stringstream cmd; cmd << buffer;
+			stringstream cmd; cmd << receiveTcpMessage(user_connsocket_fd, MAX_CHARS_TCP_PROTO_MESSAGE);
 			string temp; cmd >> temp;
 
 			if(temp == "TRQ"){
@@ -338,13 +347,27 @@ int main(int argc, char* argv[]){
 
 						if(transAvailable){
 							// There was a translation and its in the translatedWords list
+							string response = "TRR t " + intToString(numWords) + " ";
+							string answer;
 
+							while(!translatedWords.empty()){
+								answer += translatedWords.front() + " ";
+								translatedWords.pop_front();
+							}
 
-
+							answer.pop_back();
+							printf("[ANSWER] Answering user at %s with the translation:\n[ANSWER] %s.\n", userNameAndPort.c_str(), answer.c_str());
+							answer += TERM_CHAR;
+							// 0 word answer
+							sendTcpMessage(user_connsocket_fd, response + answer);
 						}
+
 						else{
 							// There wasn't a translation available
 							// TO-DO: handle the proto message here
+							string response = "TRR NTA";
+							response += TERM_CHAR;
+							sendTcpMessage(user_connsocket_fd, response);
 						}
 
 					} else{ 
@@ -360,8 +383,7 @@ int main(int argc, char* argv[]){
 			}
 
 
-			if(write(user_connsocket_fd, buffer, strlen(buffer)) == -1) printSysCallFailed();
-			printf("Sent message:\n%s\n", buffer);	
+			
 			close(user_connsocket_fd);
 			exit(0);
 		}
