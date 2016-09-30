@@ -41,6 +41,7 @@
 #define MAX_CHARS_PER_LANGNAME 20
 #define MAX_CHARS_UDP_PROTO_MESSAGE 256
 #define MAX_CHARS_TCP_PROTO_MESSAGE 256
+#define TRANSLATION_NOT_AVAILABLE_WORD ""
 
 #define MAX_COMPUTER_NAME 25 // Ask. Idunno.
 #define MAX_USER_BACKLOG 5
@@ -53,6 +54,7 @@
 #define TCS_SUN_OK "SUR OK\n"
 #define TCS_SUN_NOK "SUR NOK\n"
 #define TCS_SUN_ERR "SUR ERR\n"
+
 
 using namespace std;
 
@@ -269,7 +271,8 @@ int main(int argc, char* argv[]){
 		else if(forkId == 0){
 			// child proc code
 			    printf("port number %d\n", ntohs(user_addr.sin_port));
-			    struct in_addr user_socket_inaddr = user_addr  sin_addr; 
+			    //struct in_addr user_socket_inaddr = user_addr.sin_addr; 
+			    printf("address %s\n", inet_ntoa(user_addr.sin_addr));
 			int read_bytes = 0;
 			if((read_bytes = read(user_connsocket_fd, buffer, 128))== -1) printSysCallFailed();
 			buffer[read_bytes] = '\0';
@@ -283,19 +286,29 @@ int main(int argc, char* argv[]){
 					// Text translation
 					cmd >> temp; // temp should contain a number >0 and <=30
 					int numWords = atoi(temp.c_str());
+					bool transAvailable = true;
 					if(numWords >= 0 && numWords <= 30){
 						// Read the words
-						list<string> wordsToTranslate;
+						list<string> wordsToTranslate, translatedWords;
 						for(int i = 0; i < numWords; i++){
 							cmd >> temp;
 							wordsToTranslate.push_back(temp);
 						}
 						
-						while(!wordsToTranslate.empty()){
+						while((!wordsToTranslate.empty()) && transAvailable){
 							// Do the actual translation and build the translated words list
-							getTranslation(wordsToTranslate.front());
-							wordsToTranslate.pop_front();
+							string translatedWord = getTranslation(wordsToTranslate.front());
+							if(translatedWord == TRANSLATION_NOT_AVAILABLE_WORD)
+								transAvailable = false;
+							else{
+								translatedWords.push_back(translatedWord);
+								wordsToTranslate.pop_front();
+							}
 						}
+
+
+
+
 
 					} else printf("PROTO ERR\n");
 
