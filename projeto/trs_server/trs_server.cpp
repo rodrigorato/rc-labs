@@ -36,7 +36,7 @@
 #define TCSPORT_CONST (58000 + GN)
 
 #define MAX_CHARS_PER_WORD 30
-#define MAX_NUM_WORDS_PER_COMMAND 10
+#define MAX_NUM_WORDS_PER_REQUEST 10
 #define MAX_LANGS_PER_INSTANCE 99
 #define MAX_CHARS_PER_LANGNAME 20
 #define MAX_CHARS_UDP_PROTO_MESSAGE 256
@@ -69,7 +69,7 @@ void printWrongUsageExit(){
 }
 
 void printSysCallFailed(){
-	printf("A vital syscall for this program failed, we will not be able to continue.\n");
+	printf("Syscall failed!\n");
 	printf("For further detail check the log that was being written on this terminal.\n");
 	exit(1);
 }
@@ -266,13 +266,22 @@ int main(int argc, char* argv[]){
 	printf("[%s:%d] - Ready to accept connections from users.\n", local_name, TRSport);
 
 	bool continueListening = true;
-	while(continueListening){ // for now...
+	while(continueListening){ // TO-DO decent loop to end this
 		int forkId = -1;
-		if((user_connsocket_fd = accept(user_serversocket_fd, (struct sockaddr*) &user_addr, &useraddr_len)) == -1) printSysCallFailed();
-		printf("acc!\n");
+
+		if((user_connsocket_fd = accept(user_serversocket_fd, (struct sockaddr*) &user_addr, &useraddr_len)) == -1) 
+			printSysCallFailed();
+		
 		struct hostent* he = gethostbyaddr(&user_addr.sin_addr, sizeof user_addr.sin_addr, AF_INET);
-		string userNameAndPort = (he->h_name); userNameAndPort += ":"; userNameAndPort += intToString(ntohs(user_addr.sin_port));
-		string userAddrAndPort = (inet_ntoa(user_addr.sin_addr)); userAddrAndPort += ":"; userAddrAndPort += intToString(ntohs(user_addr.sin_port));
+		
+		string userNameAndPort = (he->h_name); 
+		userNameAndPort += ":"; 
+		userNameAndPort += intToString(ntohs(user_addr.sin_port));
+		
+		string userAddrAndPort = (inet_ntoa(user_addr.sin_addr)); 
+		userAddrAndPort += ":"; 
+		userAddrAndPort += intToString(ntohs(user_addr.sin_port));
+		
 		printf("[%s:%d] - Accepted connection from user at %s (%s).\n", local_name, TRSport, 
 									userNameAndPort.c_str(), 
 									userAddrAndPort.c_str());
@@ -281,11 +290,17 @@ int main(int argc, char* argv[]){
 		if(forkId == -1)
 			printSysCallFailed();
 		else if(forkId == 0){
-			// child proc code
-
+			// Child process code, tries to read the user's request
 			int read_bytes = 0;
-			if((read_bytes = read(user_connsocket_fd, buffer, 128))== -1) printSysCallFailed();
+			if((read_bytes = read(user_connsocket_fd, buffer, MAX_CHARS_TCP_PROTO_MESSAGE))== -1) printSysCallFailed();
 			buffer[read_bytes] = '\0';
+
+
+
+			string receiveTcpMessage()
+
+
+
 
 			stringstream cmd; cmd << buffer;
 			string temp; cmd >> temp;
@@ -296,15 +311,20 @@ int main(int argc, char* argv[]){
 					// Text translation
 					cmd >> temp; // temp should contain a number >0 and <=30
 					int numWords = atoi(temp.c_str());
+					string userRequest = "[REQUEST] User at " + userNameAndPort + " requested us to translate a sentence with " + intToString(numWords) + " words:\n[REQUEST] ";
 					bool transAvailable = true;
-					if(numWords >= 0 && numWords <= 30){
+					if(numWords >= 0 && numWords <= MAX_NUM_WORDS_PER_REQUEST){
 						// Read the words
 						list<string> wordsToTranslate, translatedWords;
 						for(int i = 0; i < numWords; i++){
 							cmd >> temp;
 							wordsToTranslate.push_back(temp);
+							userRequest += temp + " ";
 						}
-						
+
+						userRequest.pop_back(); // Remove the string's last char in O(1)
+						printf("%s.\n", userRequest.c_str());
+
 						while((!wordsToTranslate.empty()) && transAvailable){
 							// Do the actual translation and build the translated words list
 							string translatedWord = getTranslation(wordsToTranslate.front());
@@ -316,14 +336,25 @@ int main(int argc, char* argv[]){
 							}
 						}
 
+						if(transAvailable){
+							// There was a translation and its in the translatedWords list
 
 
 
+						}
+						else{
+							// There wasn't a translation available
+							// TO-DO: handle the proto message here
+						}
 
-					} else printf("PROTO ERR\n");
+					} else{ 
+						// TO-DO: handle protocol error
+						printf("PROTO ERR\n");
+					}
 
 				} else if(temp == "f"){
 					// File translation
+					// TO-DO
 
 				} else printf("PROTO ERR\n");
 			}
