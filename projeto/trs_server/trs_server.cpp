@@ -30,10 +30,14 @@
 #include <fstream>
  
 
+
 // Default values
 #define TRSPORT_CONST 59000
 #define TCSNAME_CONST "localhost"
 #define TCSPORT_CONST (58000 + GN)
+
+#define WORD_TRANSLATION_FILENAME "text_translation.txt"
+#define FILE_TRANSLATION_FILENAME "file_translation.txt"
 
 #define MAX_CHARS_PER_WORD 30
 #define MAX_NUM_WORDS_PER_REQUEST 10
@@ -155,8 +159,26 @@ string unregisterWithTCS(int socket_fd, sockaddr_in src_addr, int flags, string 
 	return receiveUdpMessage(socket_fd, MAX_CHARS_UDP_PROTO_MESSAGE, flags, src_addr);
 }
 
-string getTranslation(string word){
-	return "le_" + word;
+string getWordTranslation(string word){
+	// to-do lower case all?
+	ifstream wordsFile(WORD_TRANSLATION_FILENAME);
+  	if(!wordsFile.is_open())
+  		printSysCallFailed();
+
+  	string translation, temp;
+  	bool match = false;
+  	while(!match && getline(wordsFile, temp)){
+  		string dictWord, dictTrans;
+  		stringstream tempStream; tempStream.str(temp);
+  		tempStream >> dictTrans; tempStream >> dictWord;
+  		if(dictWord == word){
+  			match = true;
+  			translation = dictTrans;
+  		}
+  	}
+
+    wordsFile.close();
+    return (match) ? translation : TRANSLATION_NOT_AVAILABLE_WORD;
 }
 
 string intToString(int num){
@@ -281,7 +303,7 @@ int main(int argc, char* argv[]){
 	printf("[%s:%d] - Ready to accept connections from users.\n", local_name, TRSport);
 
 	bool continueListening = true;
-	while(continueListening){ // TO-DO decent loop to end this
+	while(continueListening){ 
 		int forkId = -1;
 
 		if((user_connsocket_fd = accept(user_serversocket_fd, (struct sockaddr*) &user_addr, &useraddr_len)) == -1) 
@@ -320,9 +342,9 @@ int main(int argc, char* argv[]){
 					// Text translation
 					cmd >> temp; // temp should contain a number >0 and <=30
 					int numWords = atoi(temp.c_str());
-					string userRequest = "[REQUEST] User at " + userNameAndPort + " requested us to translate a sentence with " + intToString(numWords) + " words:\n[REQUEST] ";
+					string userRequest = "[<- " + userNameAndPort + "] User requested us to translate a sentence with " + intToString(numWords) + " word(s):\n[<- " + userNameAndPort + "] ";
 					bool transAvailable = true;
-					if(numWords >= 0 && numWords <= MAX_NUM_WORDS_PER_REQUEST){
+					if(numWords > 0 && numWords <= MAX_NUM_WORDS_PER_REQUEST){
 						// Read the words
 						list<string> wordsToTranslate, translatedWords;
 						for(int i = 0; i < numWords; i++){
@@ -336,7 +358,7 @@ int main(int argc, char* argv[]){
 
 						while((!wordsToTranslate.empty()) && transAvailable){
 							// Do the actual translation and build the translated words list
-							string translatedWord = getTranslation(wordsToTranslate.front());
+							string translatedWord = getWordTranslation(wordsToTranslate.front());
 							if(translatedWord == TRANSLATION_NOT_AVAILABLE_WORD)
 								transAvailable = false;
 							else{
@@ -356,46 +378,51 @@ int main(int argc, char* argv[]){
 							}
 
 							answer.pop_back();
-							printf("[ANSWER] Answering user at %s with the translation:\n[ANSWER] %s.\n", userNameAndPort.c_str(), answer.c_str());
+							printf("[-> %s] Answering user with the translation:\n[-> %s] %s.\n", userNameAndPort.c_str(), userNameAndPort.c_str(), answer.c_str());
 							answer += TERM_CHAR;
-							// 0 word answer
 							sendTcpMessage(user_connsocket_fd, response + answer);
 						}
 
 						else{
 							// There wasn't a translation available
-							// TO-DO: handle the proto message here
 							string response = "TRR NTA";
 							response += TERM_CHAR;
 							sendTcpMessage(user_connsocket_fd, response);
 						}
 
 					} else{ 
-						// TO-DO: handle protocol error
-						printf("PROTO ERR\n");
+						string response = "TRR ERR";
+						response += TERM_CHAR;
+						sendTcpMessage(user_connsocket_fd, response);
 					}
 
 				} else if(temp == "f"){
 					// File translation
 					// TO-DO
 
-				} else printf("PROTO ERR\n");
+				} else{
+					string response = "TRR ERR";
+					response += TERM_CHAR;
+					sendTcpMessage(user_connsocket_fd, response);
+
+				}
 			}
 
-
-			
 			close(user_connsocket_fd);
 			exit(0);
 		}
 		else{
 			// parent code
+			// TO-DO: find a way to exit this laterrrrrrr
+			/*
 			char temp_command[MAX_CHARS_PER_WORD];
 			scanf("%s", temp_command);
-			if(!strcmp(temp_command, "exit")) continueListening = false;
-
+			if(!strcmp(temp_command, "exit")) 
+				continueListening = false;
+			*/
 		}
-
 	}
+
 	close(user_serversocket_fd);
 	
 	
