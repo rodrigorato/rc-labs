@@ -387,6 +387,7 @@ int main(int argc, char* argv[]){
 							// There wasn't a translation available
 							string response = "TRR NTA";
 							response += TERM_CHAR;
+							printf("[-> %s] Answering user with NTA (translation not available).\n", userNameAndPort.c_str());
 							sendTcpMessage(user_connsocket_fd, response);
 						}
 
