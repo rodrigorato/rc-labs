@@ -283,7 +283,8 @@ int main(int argc, char** argv){
 							st >> filename;
 							st >> temp4 ;
 							filesize=atoi(temp4.c_str()); 
-							st >> data;
+							while(st >> data);
+							
 							
 						}
 					}
