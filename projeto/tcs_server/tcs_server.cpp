@@ -79,24 +79,37 @@ int main(int argc, char const *argv[])
 	vector<Server> servers;		// vector to hold server data
 
 	if ((fd = socket(AF_INET, SOCK_DGRAM,0)) ==-1)
+	{
+		cout << "Failed to create socket. Exiting" << endl;
 		exit(-1);
+	}
 
 	memset((void*)&serveraddr, (int)'\0', sizeof(serveraddr));
 	serveraddr.sin_family= AF_INET;
 	serveraddr.sin_addr.s_addr= htonl(INADDR_ANY);
 
 
-	if(argc > 1)	//check if a custom port has been given. if not set default port
+	if(argc > 1)//check if a custom port has been given. if not set default port
+	{	
 		serveraddr.sin_port = htons((u_short) atoi(argv[2]) );
+		cout << "TCS server started in custom port number " << argv[2] << endl;
+	}
 	else
+	{
 		serveraddr.sin_port = htons((u_short)PORT);
-
+		cout << "TCS server started in default port number " << PORT << endl;
+	}
 
 
 	if (bind(fd,(struct sockaddr*)&serveraddr,sizeof(serveraddr)) == -1) // bind socket for connection
+	{
+		cout << "Failed to bind socket to port. Exiting." << endl;
 		exit(-1);
+	}
 
 	addrlen = sizeof(clientaddr); // get size of client address
+
+	cout << "Now waiting for requests form TRS servers and clients" << endl;
 
 	while(1) // main connection loop
 	{
@@ -153,21 +166,19 @@ int main(int argc, char const *argv[])
 				
 				sscanf(buffer,"%s %s\n", command, language_buffer);
 
-				if (language_buffer[0] == '\0')
+				if (language_buffer[0] == '\0') // check if a language was specifeid in the user command
 				{
 					if(sendto(fd, CONNECT_RETURN_ERROR, strlen(CONNECT_RETURN_ERROR), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) 
 						exit(-1);
 					cout << "Connect request failed. No language specified." << endl;
 				}
 
-				else if (duplicateLanguage(servers,language_buffer))
+				else if (duplicateLanguage(servers,language_buffer)) // check if the language can be translated
 				{
 					for (unsigned i = 0; i < servers.size(); ++i)
 					{
-						if (!strcmp(servers[i].language,language_buffer))
+						if (!strcmp(servers[i].language,language_buffer)) // check if server entry matches the requested language
 						{
-							data += servers[i].language;
-							data += ' ';
 							data += servers[i].ip_addr;
 							data += ' ';
 							stream << servers[i].port;
@@ -185,8 +196,9 @@ int main(int argc, char const *argv[])
 				}
 				else
 				{
-						if(sendto(fd, CONNECT_RETURN_UNKNOWN, strlen(CONNECT_RETURN_UNKNOWN), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) 
-								exit(-1);
+					if(sendto(fd, CONNECT_RETURN_UNKNOWN, strlen(CONNECT_RETURN_UNKNOWN), 0, (struct sockaddr*) &clientaddr, addrlen) == -1)
+						exit(-1);
+					cout << "Error : requested language does not exist." << endl;
 				}
 			}
 		
@@ -197,7 +209,7 @@ int main(int argc, char const *argv[])
 				int port_buffer = -1;
 				sscanf(buffer,"%s %s %s %d\n", command, language_buffer, ip_buffer, &port_buffer); //get info from new server
 
-				if (language_buffer[0] == '\0' || ip_buffer[0] == '\0' || port_buffer == -1)
+				if (language_buffer[0] == '\0' || ip_buffer[0] == '\0' || port_buffer == -1) // check if the necessary info about the server was specified
 				{
 					if(sendto(fd, NEW_SERVER_ERR, strlen(NEW_SERVER_ERR), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to translation server
 						exit(-1);
@@ -205,7 +217,7 @@ int main(int argc, char const *argv[])
 
 				}
 
-				else if (!duplicateLanguage(servers,language_buffer))
+				else if (!duplicateLanguage(servers,language_buffer)) // check if there is already a TRS for that language
 				{
 					Server s(language_buffer,ip_buffer, port_buffer); // create new server and add to server vector
 					servers.push_back(s);
@@ -213,7 +225,7 @@ int main(int argc, char const *argv[])
 					if(sendto(fd, NEW_SERVER_OK, strlen(NEW_SERVER_OK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to translation server
 						exit(-1); 
 				}
-				else
+				else 
 				{
 					if(sendto(fd, NEW_SERVER_NOK, strlen(NEW_SERVER_NOK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to translation server
 						exit(-1);
@@ -229,7 +241,7 @@ int main(int argc, char const *argv[])
 				int port_buffer = -1;
 				sscanf(buffer,"%s %s %s %d\n", command, language_buffer, ip_buffer, &port_buffer); // get info from server
 
-				if (language_buffer[0] == '\0' || ip_buffer[0] == '\0' || port_buffer == -1)
+				if (language_buffer[0] == '\0' || ip_buffer[0] == '\0' || port_buffer == -1) // check if the necessary info about the server was specified
 				{
 					if(sendto(fd, CLOSE_SERVER_ERR, strlen(CLOSE_SERVER_ERR), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to translation server
 						exit(-1);
@@ -269,7 +281,7 @@ int main(int argc, char const *argv[])
 }
 
 
-int duplicateLanguage(vector<Server> servers, char* language)
+int duplicateLanguage(vector<Server> servers, char* language) // check if a TRS server for the given language already exists 
 {
 	for (unsigned i = 0; i < servers.size() ; ++i)
 	{
