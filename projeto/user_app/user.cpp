@@ -30,16 +30,16 @@ using namespace std;
 //wantsAnswer é solucao ate se separar melhor as coisas
 
 bool isError(char buff[]){
+	char mRead[3];
+	char m[3];
+	sscanf(buff,"%s %s",mRead, m);
 	if(buff[4]=='E'){ // TCS devolve mensagem de erro
-		char mRead[3];
-		char m[3];
-		sscanf(buff,"%s %s",mRead, m);
 		if(!strcmp(m,"EOF")) printf("pedido nao pode ser cumprido\n");
 		else if (!strcmp(m,"ERR")) printf("Wrong instruction\n");
+	}
 	else if (!strcmp(m,"NTA")) printf("translation is not available\n");
 	else return false;
 	return true;
-	}
 }
 /*
 int startUDP(int fd,struct hostent* hostptr,string TCSname,struct sockaddr_in serveraddr,int TCSport){
@@ -231,10 +231,11 @@ int main(int argc, char** argv){
 						if(write(fd2, message3.c_str(), message3.length()) == -1) exit(1);
 						cout << "sent message: \n" << message3 << endl;			
 					}
-
-					if(read(fd2, buffer2, 128) == -1) exit(1);
+					int num_bytes=0;
+					if((num_bytes=read(fd2, buffer2, 128)) == -1) exit(1);
 					buffer2[num_bytes]='\0';
 					printf("Received message:\n%s\n", buffer2); 
+
 					if(!isError(buffer2)){
 						
 						stringstream st;
