@@ -44,7 +44,7 @@
 #define MAX_LANGS_PER_INSTANCE 99
 #define MAX_CHARS_PER_LANGNAME 20
 #define MAX_CHARS_UDP_PROTO_MESSAGE 256
-#define MAX_CHARS_TCP_PROTO_MESSAGE 256
+#define MAX_CHARS_TCP_PROTO_MESSAGE 10240
 #define TRANSLATION_NOT_AVAILABLE_WORD ""
 
 #define MAX_COMPUTER_NAME 25 // Ask. Idunno.
@@ -179,6 +179,15 @@ string getWordTranslation(string word){
 
     wordsFile.close();
     return (match) ? translation : TRANSLATION_NOT_AVAILABLE_WORD;
+}
+
+
+
+void writeFile(string filename, int filesize, string data){
+	ofstream file;
+  	file.open(filename.c_str());
+  	file << data;
+  	file.close();
 }
 
 string intToString(int num){
@@ -400,6 +409,14 @@ int main(int argc, char* argv[]){
 				} else if(temp == "f"){
 					// File translation
 					// TO-DO
+					string filename = "translate_", data;
+					int filesize;
+					cmd >> filename; // temp contains the filename
+					cmd >> temp; filesize = atoi(temp.c_str()); // got the filesize	
+					cout << cmd.str() << endl;
+					data = cmd.str();
+					data.pop_back();
+					writeFile(filename, filesize, data);
 
 				} else{
 					string response = "TRR ERR";
@@ -411,16 +428,6 @@ int main(int argc, char* argv[]){
 
 			close(user_connsocket_fd);
 			exit(0);
-		}
-		else{
-			// parent code
-			// TO-DO: find a way to exit this laterrrrrrr
-			/*
-			char temp_command[MAX_CHARS_PER_WORD];
-			scanf("%s", temp_command);
-			if(!strcmp(temp_command, "exit")) 
-				continueListening = false;
-			*/
 		}
 	}
 

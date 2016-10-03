@@ -14,6 +14,7 @@ TRS-SUB:
 	make && \
 	cp ./TRS ../TRS && \
 	cp ./*.txt ../ && \
+	cp ./*.jpg ../ && \
 	cd ../	
 	@echo ""
 	@echo "[MAIN-TRS-SUB] Brought TRS to main directory successfully."
@@ -38,6 +39,7 @@ USER-SUB:
 	cd ./user_app/ && \
 	make && \
 	cp ./user ../user && \
+	cp ./*.jpg ../ && \
 	cd ../	
 	@echo ""
 	@echo "[MAIN-USER-SUB] Brought user to main directory successfully."
@@ -62,7 +64,7 @@ clean:
 	cd ./user_app/ && \
 	make clean && \
 	cd ../
-
+	rm *.jpg
 	@echo ""
 	@echo "[MAIN-CLEAN] Done cleaning subs, cleaning main."
 	rm -f TCS TRS user
