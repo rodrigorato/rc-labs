@@ -56,6 +56,13 @@ int startUDP(int fd,struct hostent* hostptr,string TCSname,struct sockaddr_in se
 }*/
 
 
+void swapStreams(stringstream* a, stringstream *b){
+	string a_content = a->str();
+	string b_content = b->str();
+	a->clear(); a->str(b_content);
+	b->clear(); b->str(a_content);
+}
+
 int main(int argc, char** argv){	
 	int fd;
 	socklen_t addrlen;
@@ -254,7 +261,8 @@ int main(int argc, char** argv){
 		//input_stream << user_input;
 		stringstream s;
 		s<<user_input;
-		s.swap(input_stream);
+		swapStreams(&s, &input_stream);
+		//s.swap(input_stream);
 		input_stream >> instruction;
 		cout<<instruction<<endl;
 		
