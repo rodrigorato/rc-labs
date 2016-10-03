@@ -78,6 +78,8 @@ int main(int argc, char const *argv[])
 	char command[MAX_SIZE];
 	vector<Server> servers;		// vector to hold server data
 
+	cout << "TCS usage : TCS [-p custom_port]" << endl;
+
 	if ((fd = socket(AF_INET, SOCK_DGRAM,0)) ==-1)
 	{
 		cout << "Failed to create socket. Exiting" << endl;
@@ -98,6 +100,7 @@ int main(int argc, char const *argv[])
 	{
 		serveraddr.sin_port = htons((u_short)PORT);
 		cout << "TCS server started in default port number " << PORT << endl;
+		cout << "If you would like to use a custom port number specify at startup with the -p argument" << endl;
 	}
 
 
