@@ -10,6 +10,7 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <fstream>
 
 //#define TRSPORT 59000
 #define TCSNAME "localhost"
@@ -27,7 +28,7 @@
 
 using namespace std;
 //por if em gethosts, perguntar ao user what do do se o tejo nao responde , verificar se os argumentos tao certos,ostringstream
-//wantsAnswer é solucao ate se separar melhor as coisas
+//wantsAnswer é solucao ate se separar melhor as coisas, nao deixar fazer requests primeiro, nao ter numeros randoms no programa
 
 bool isError(char buff[]){
 	char mRead[3];
@@ -74,6 +75,7 @@ int main(int argc, char** argv){
 	string TCSname=TCSNAME;
 	
 	char languages[MAX_LANGS][MAX_SIZE_LANGUAGE], words[MAX_WORDS][MAX_SIZE_WORD];
+	char filename[MAX_FILE_NAME]; 
 	char tf;//indicador se vai-se traduzir texto ou ficheiro
 	int numWords;
 	bool wantsAnswer=false;
@@ -160,9 +162,11 @@ int main(int argc, char** argv){
 				numWords=i;
 
 				
-			}else if(tf=='f'){
-				char filename[MAX_FILE_NAME];  //provavelmente sitiu mau pa declarar isto????????
-				scanf("%s",filename);
+			}else if(tf=='f'){// send images
+				
+				input_stream >> filename;
+				printf("Imagem a traduzir para %s: %s\n",languages[langNum-1],filename );
+
 			}
 			wantsAnswer=true;
 
@@ -201,7 +205,7 @@ int main(int argc, char** argv){
 					int fd2;
 					struct hostent* hostptr2;
 					struct sockaddr_in serveraddr2;
-					char buffer2[128];
+					char buffer2[10000];
 
 					if((fd2 = socket(AF_INET, SOCK_STREAM, 0)) == -1) exit(1);
 					if((hostptr2=gethostbyname(ipTRS))==NULL) printf("erro gethostbyname\n"); // to do: exit(1)
@@ -213,10 +217,11 @@ int main(int argc, char** argv){
 
 					if(connect(fd2, (struct sockaddr*) &serveraddr2, sizeof(serveraddr2)) == -1) exit(1);//ta testado ate aqui pk nao trs
 					printf("Connected successfully\n");
-
+					string message3 = "TRQ ";
+					message3 += tf;
+					message3 +=' ';
 					if(tf=='t'){
 						stringstream stream;
-						string message3 = "TRQ t ";
 						stream << numWords;
 						message3 += stream.str();
 						
@@ -227,25 +232,59 @@ int main(int argc, char** argv){
 							//cout<< message3<<endl;
 						}
 						message3 += '\n';
-						if(write(fd2, message3.c_str(), message3.length()) == -1) exit(1);
-						cout << "sent message: \n" << message3 << endl;			
+						cout << "sent message: \n" << message3 << endl;	
+					}else if (tf=='f'){
+						ifstream file(filename);
+						string line,data;
+						stringstream temp3;
+						message3 += filename; 
+						message3 += ' ';
+						if(file.is_open()){
+							while (getline(file, line)){
+								data += line;
+							}
+							temp3<<data.length();
+							message3 += temp3.str();
+							message3 += ' ';
+							cout << "sent message:\n" <<message3<<" data"<<endl;
+							message3 += data;
+						}else cout << "could not open file"<<endl;
 					}
-					int num_bytes=0;
-					if((num_bytes=read(fd2, buffer2, 128)) == -1) exit(1);
-					buffer2[num_bytes]='\0';
-					printf("Received message:\n%s\n", buffer2); 
-
-					if(!isError(buffer2)){
+					if(write(fd2, message3.c_str(), message3.length()) == -1) exit(1);
 						
-						stringstream st;
-						st.str(buffer2);
-						st >> buffer2;//lixo, TRR é preciso verificar?
-						st >> tf;
-						st >>numWords;
-						if (tf=='t'){
-							cout << "traducao:"<<endl;
-							for(int i=0;st >> words[i];i++)
-								cout<<words[i]<<endl;
+					int num_bytes=0;
+					if((num_bytes=read(fd2, buffer2, 10000)) == -1) exit(1);
+					if (tf=='t'){
+						buffer2[num_bytes]='\0';
+						printf("Received message:\n%s\n", buffer2); 
+
+						if(!isError(buffer2)){
+							
+							stringstream st;
+							st.str(buffer2);
+							st >> buffer2;//lixo, TRR é preciso verificar?
+							st >> tf;
+							st >>numWords;
+							if (tf=='t'){
+								cout << "traducao:"<<endl;
+								for(int i=0;st >> words[i];i++)
+									cout<<words[i]<<endl;
+							}
+						}
+					}else{
+						if(!isError(buffer2)){
+							string temp4, data;
+							int filesize;
+							stringstream st;
+							
+							st.str(buffer2);
+							st >> buffer2; //TRR
+							st >> tf;       //f
+							st >> filename;
+							st >> temp4 ;
+							filesize=atoi(temp4.c_str()); 
+							st >> data;
+							
 						}
 					}
 					
