@@ -13,6 +13,7 @@ TRS-SUB:
 	cd ./trs_server/ && \
 	make && \
 	cp ./TRS ../TRS && \
+	cp ./*.txt ../ && \
 	cd ../	
 	@echo ""
 	@echo "[MAIN-TRS-SUB] Brought TRS to main directory successfully."
@@ -52,6 +53,7 @@ clean:
 	cd ./trs_server/ && \
 	make clean && \
 	cd ../
+	rm *.txt	
 
 	cd ./tcs_server/ && \
 	make clean && \
