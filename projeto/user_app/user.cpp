@@ -198,7 +198,7 @@ int main(int argc, char** argv){
 					char buffer2[128];
 
 					if((fd2 = socket(AF_INET, SOCK_STREAM, 0)) == -1) exit(1);
-					if((hostptr2=gethostbyname(ipTRS))==NULL) printf("nope\n"); // to do: exit(1)
+					if((hostptr2=gethostbyname(ipTRS))==NULL) printf("erro gethostbyname\n"); // to do: exit(1)
 
 					memset((void*)&serveraddr2, (int)'\0', sizeof(serveraddr2));
 					serveraddr2.sin_family = AF_INET;
@@ -218,7 +218,7 @@ int main(int argc, char** argv){
 							stringstream s ;
 							s<< words[i];
 							message3+= ' ' + s.str();
-							cout<< message3<<endl;
+							//cout<< message3<<endl;
 						}
 						message3 += '\n';
 						if(write(fd2, message3.c_str(), message3.length()) == -1) exit(1);
@@ -241,7 +241,7 @@ int main(int argc, char** argv){
 								cout<<words[i]<<endl;
 						}
 					}
-					printf("abbbbbaaa\n");
+					
 
 
 					close(fd2);
@@ -253,7 +253,6 @@ int main(int argc, char** argv){
 		//input_stream.str(input_stream.str().replace(0,input_stream.str().length(),user_input));
 		//input_stream << user_input;
 		stringstream s;
-		s.str(input_stream.str());
 		s<<user_input;
 		s.swap(input_stream);
 		input_stream >> instruction;
