@@ -153,7 +153,6 @@ int main(int argc, char** argv){
 
 			if(tf=='t'){
 				printf("Palavras a traduzir para %s:\n",languages[langNum-1]);
-				char temp3[MAX_SIZE_WORD];
 				int i;
 				for(i=0;input_stream >> words[i];i++){
 					printf("%s\n",words[i]);
@@ -265,7 +264,7 @@ int main(int argc, char** argv){
 		swapStreams(&s, &input_stream);
 		//s.swap(input_stream);
 		input_stream >> instruction;
-		cout<<instruction<<endl;
+		//cout<<instruction<<endl;
 		
 		/*
 		for( i=0;user_input[i]!=' ';i++){
