@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <string.h>
+#include <math.h>
 
 #include <iostream>
 #include <string>
@@ -205,7 +206,7 @@ int main(int argc, char** argv){
 					int fd2;
 					struct hostent* hostptr2;
 					struct sockaddr_in serveraddr2;
-					char buffer2[10000];
+					char buffer2[300000];
 
 					if((fd2 = socket(AF_INET, SOCK_STREAM, 0)) == -1) exit(1);
 					if((hostptr2=gethostbyname(ipTRS))==NULL) printf("erro gethostbyname\n"); // to do: exit(1)
@@ -217,6 +218,8 @@ int main(int argc, char** argv){
 
 					if(connect(fd2, (struct sockaddr*) &serveraddr2, sizeof(serveraddr2)) == -1) exit(1);//ta testado ate aqui pk nao trs
 					printf("Connected successfully\n");
+					string content;
+					int size;
 					string message3 = "TRQ ";
 					message3 += tf;
 					message3 +=' ';
@@ -234,27 +237,40 @@ int main(int argc, char** argv){
 						message3 += '\n';
 						cout << "sent message: \n" << message3 << endl;	
 					}else if (tf=='f'){
-						ifstream file(filename);
 						string line,data;
 						stringstream temp3;
 						message3 += filename; 
 						message3 += ' ';
+						
+						ifstream file(filename,ios::ate);
 						if(file.is_open()){
+							int size = file.tellg(); //get size
+						    file.seekg (0, ios::beg); //go back to begining of file
+							content.resize(size);
+
+							file.read(&content[0],size);
+							/*
 							while (getline(file, line)){
 								data += line;
 							}
 							temp3<<data.length();
+							message3 += temp3.str();*/
+
+							temp3 <<size;
 							message3 += temp3.str();
 							message3 += ' ';
-							cout << "sent message:\n" <<message3<<" data"<<endl;
-							message3 += data;
+							cout << "sent message:\n" <<message3<<"data"<<endl;
+							
+							//cout<<content<<endl;
+							//message3 += content;
+							//message3 +='\n';
 						}else cout << "could not open file"<<endl;
 					}
 					if(write(fd2, message3.c_str(), message3.length()) == -1) exit(1);
-						
+					if (tf=='f') if(write(fd2, &content[0], size) == -1) exit(1);
 					int num_bytes=0;
-					if((num_bytes=read(fd2, buffer2, 10000)) == -1) exit(1);
 					if (tf=='t'){
+						if((num_bytes=read(fd2, buffer2, 300000)) == -1) exit(1);
 						buffer2[num_bytes]='\0';
 						printf("Received message:\n%s\n", buffer2); 
 
@@ -272,19 +288,67 @@ int main(int argc, char** argv){
 							}
 						}
 					}else{
+						if((num_bytes=read(fd2, buffer2, 2048)) == -1) exit(1);
+
+							//sprintf(buffer, "TRR f mandibulas.pdf 3 aaa\n");
+//trr f jaws.jpg 6000 
 						if(!isError(buffer2)){
-							string temp4, data;
+							printf("Received message:\n%s\n", buffer2); 
+							string temp4;
 							int filesize;
 							stringstream st;
+							string data;
 							
 							st.str(buffer2);
-							st >> buffer2; //TRR
+							st >> temp4; //TRR
 							st >> tf;       //f
 							st >> filename;
-							st >> temp4 ;
-							filesize=atoi(temp4.c_str()); 
-							while(st >> data);
-							
+							st >> filesize ;
+/*
+							while(st >> temp4) data+=temp4;
+							cout<<"------------------"<<endl;
+							cout<<"data: "<<data<<endl;*/
+							data=st.str();
+							data=data.substr(28); //faz as contas
+							cout<<"------------------"<<endl;
+							cout<<"data1: "<<data<<endl;
+							int n=1;
+							num_bytes-=28;
+							int bytes_left=filesize - num_bytes;
+							while(bytes_left>0) {
+								cout<<bytes_left<<' ';
+								if((n=read(fd2, buffer2, 2048)) == -1) exit(1);
+								bytes_left -= n;
+								num_bytes+=n;
+								st.str(buffer2);
+								data = data+st.str();
+								//cout<<"STREAM::::::"<<st.str()<<endl;
+								//while(st >> temp4){ data+=temp4;}
+							}
+							ofstream received_file;	
+							received_file.open ("example.pdf",ios::trunc );
+							received_file.write(data.c_str(),filesize);
+							received_file.close();
+
+							data[data.length()-1]='\0';
+							cout<<"------------------"<<endl;
+							cout<<"data final: "<<data<<endl;
+
+/*	ifstream small("small.jpg",ios::ate);
+	ofstream myfile;
+	string line;
+	char* content;
+
+  	myfile.open ("example.jpg",ios::trunc);
+  	int size = small.tellg();
+    content = new char [size];
+    small.seekg (0, ios::beg);
+  	small.read(content,size);
+  	cout << size << endl;
+  	myfile.write(content,size);
+  	myfile.close();
+  	small.close();*/
+
 							
 						}
 					}
