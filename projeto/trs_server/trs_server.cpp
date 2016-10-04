@@ -433,14 +433,31 @@ int main(int argc, char* argv[]){
 					int filesize;
 					cmd  >> filename; // temp contains the filename
 					filename = "translated_" + filename;
-					cmd >> temp; filesize = atoi(temp.c_str()); // got the filesize	
+					cmd >> filesize;
 					data = cmd.str();
-					data.pop_back(); // removes the last '\n'
+					data = data.substr(20); // TO-DO actual math lol
+					//data.pop_back(); // removes the last '\n'
+
+					int n = 0, totalRead = data.length();
+					char dataBuffer[2048];
+
+					printf("started the while loooooop\n");
+					while(totalRead < filesize){
+						if((n = read(user_connsocket_fd, dataBuffer, 2048)) == -1)
+							printSysCallFailed();
+						cmd.str(dataBuffer);
+						data += cmd.str();
+						totalRead += n;
+					}
+					printf("finished the while loooooop\n");
+
 					
+					/*
 					while((data_temp = receiveTcpMessage(user_connsocket_fd, MAX_TCP_BUFFER)) != "\0")
 						data += data_temp;
 
 					cout << data << endl;
+					*/
 					writeFile(filename, filesize, data);
 
 				} else{
