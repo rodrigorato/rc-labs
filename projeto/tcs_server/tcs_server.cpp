@@ -1,14 +1,16 @@
-#include <iostream>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <arpa/inet.h>
+#include <string.h>
 #include <string>
 #include <sstream>
-#include <string.h>
 #include <vector>
+#include <iostream>
+
 
 #ifndef PORT	
 #define PORT 58014 //default connection port
@@ -44,11 +46,11 @@
 
 #define CLOSE_SERVER "SUN"
 
-#define CLOSE_SERVER_OK "SUN OK\n"
+#define CLOSE_SERVER_OK "SUR OK\n"
 
-#define CLOSE_SERVER_NOK "SUN NOK\n"
+#define CLOSE_SERVER_NOK "SUR NOK\n"
 
-#define CLOSE_SERVER_ERR "SUN ERR\n"
+#define CLOSE_SERVER_ERR "SUR ERR\n"
 
 #endif
 
@@ -69,6 +71,12 @@ struct Server // struct to hold data about currently active servers
 using namespace std;
 
 int duplicateLanguage(vector<Server> servers, char* language);
+
+string intToString(int num){
+	ostringstream s;
+	s << num;
+	return s.str();
+}
 
 int main(int argc, char const *argv[])
 {	
@@ -121,13 +129,19 @@ int main(int argc, char const *argv[])
 		if (recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen) == -1) // get message from clients
 			exit(-1);
 
+		struct hostent* cl = gethostbyaddr(&clientaddr.sin_addr, sizeof clientaddr.sin_addr, AF_INET);
+
+		string userAddrAndPort = (inet_ntoa(clientaddr.sin_addr)); 
+		userAddrAndPort += ":"; 
+		userAddrAndPort += intToString(ntohs(clientaddr.sin_port));
+
 
 		sscanf(buffer, "%s",command); // determine the received command
 
 
 		if (!strcmp(command,LIST_REQUEST))		// list command processing
 			{
-				cout << "List request received." << endl;
+				cout << "List request received from " << cl->h_name << " at " << userAddrAndPort << endl;
 				if (servers.size() == 0) // There are no servers available
 				{
 					if(sendto(fd, NO_SERVERS_ERROR, strlen(NO_SERVERS_ERROR), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send no available servers error
@@ -154,7 +168,7 @@ int main(int argc, char const *argv[])
 					if(sendto(fd, data.c_str(), strlen(data.c_str()), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send no available servers error
 						exit(-1);
 
-					cout << "List request sent." << endl;
+					cout << "List request sent to " << cl->h_name << " at " << userAddrAndPort << endl;
 
 				}
 				
@@ -165,7 +179,7 @@ int main(int argc, char const *argv[])
 				string data = CONNECT_RETURN;
 				stringstream stream;
 
-				cout << "Connect request received." << endl;
+				cout << "Connect request received from " << cl->h_name << " at " << userAddrAndPort << endl;
 				
 				sscanf(buffer,"%s %s\n", command, language_buffer);
 
@@ -192,7 +206,7 @@ int main(int argc, char const *argv[])
 							if(sendto(fd, data.c_str(), strlen(data.c_str()), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send no available servers error
 								exit(-1);
 
-							cout << "Connection data sent to client." << endl;
+							cout << "Connection data sent to " << cl->h_name << " at " << userAddrAndPort << endl;
 
 						}
 					}
@@ -232,7 +246,7 @@ int main(int argc, char const *argv[])
 				{
 					if(sendto(fd, NEW_SERVER_NOK, strlen(NEW_SERVER_NOK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to translation server
 						exit(-1);
-					cout << "Failed to add TRS server. Duplicate language." << endl;
+					cout << "Failed to add TRS server at " << ip_buffer << ":" << port_buffer <<". Duplicate language." << endl;
 
 				}
 			}
@@ -266,7 +280,7 @@ int main(int argc, char const *argv[])
 							{
 								if(sendto(fd, CLOSE_SERVER_NOK, strlen(CLOSE_SERVER_NOK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to removed server
 									exit(-1);
-								cout << "Failed to remove TRS server. IP and/or port number do not match." << endl;
+								cout << "Failed to add TRS server at " << ip_buffer << ":" << port_buffer << ". IP and/or port number do not match." << endl;
 							}
 						}
 				}
@@ -275,7 +289,7 @@ int main(int argc, char const *argv[])
 				{
 					if(sendto(fd, CLOSE_SERVER_NOK, strlen(CLOSE_SERVER_NOK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to removed server
 						exit(-1);
-					cout << "Failed to remove TRS server. Language does not exist." << endl;
+					cout << "Failed to remove TRS server at " << ip_buffer << ":" << port_buffer << ". Language does not exist." << endl;
 
 				}
 			}
