@@ -45,6 +45,7 @@
 #define MAX_CHARS_PER_LANGNAME 20
 #define MAX_CHARS_UDP_PROTO_MESSAGE 256
 #define MAX_CHARS_TCP_PROTO_MESSAGE 10240
+#define MAX_TCP_BUFFER 256
 #define TRANSLATION_NOT_AVAILABLE_WORD ""
 
 #define MAX_COMPUTER_NAME 25 // Ask. Idunno.
@@ -122,6 +123,26 @@ string receiveTcpMessage(int socketFd, int bufferSize){
 	return message;
 }
 
+/*
+string receiveTcpFile(int socketFd, int bufferSize){
+	int read_bytes = 0, n = 0;
+	char buffer[bufferSize];
+	string message;
+	cout << "going into the loop" << endl;
+	while(n != 0 || read_bytes == 0){
+		cout << "starting to read" << endl;
+		if((n = read(socketFd, buffer, bufferSize)) == -1)
+			printSysCallFailed();
+		read_bytes += n;
+		message += buffer;
+		cout << "ending the loop" << endl;
+	}
+	cout << "out goes the loop" << endl;
+	message += '\0';
+	return message;
+}
+*/
+
 void sendTcpMessage(int socketFd, string message){
 	if(write(socketFd, message.c_str(), strlen(message.c_str())) == -1) 
 		printSysCallFailed();
@@ -182,11 +203,10 @@ string getWordTranslation(string word){
 }
 
 
-
 void writeFile(string filename, int filesize, string data){
 	ofstream file;
-  	file.open(filename.c_str());
-  	file << data;
+  	file.open(filename.c_str(), ios::out | ios::trunc | ios::binary);
+  	file.write(data.c_str(), filesize);
   	file.close();
 }
 
@@ -342,7 +362,7 @@ int main(int argc, char* argv[]){
 			//string receiveTcpMessage(int socketFd, int bufferSize)
 			//void sendTcpMessage(int socketFd, string message)
 
-			stringstream cmd; cmd << receiveTcpMessage(user_connsocket_fd, MAX_CHARS_TCP_PROTO_MESSAGE);
+			stringstream cmd; cmd << receiveTcpMessage(user_connsocket_fd, MAX_TCP_BUFFER);
 			string temp; cmd >> temp;
 
 			if(temp == "TRQ"){
@@ -409,13 +429,18 @@ int main(int argc, char* argv[]){
 				} else if(temp == "f"){
 					// File translation
 					// TO-DO
-					string filename = "translate_", data;
+					string filename , data, data_temp;
 					int filesize;
-					cmd >> filename; // temp contains the filename
+					cmd  >> filename; // temp contains the filename
+					filename = "translated_" + filename;
 					cmd >> temp; filesize = atoi(temp.c_str()); // got the filesize	
-					cout << cmd.str() << endl;
 					data = cmd.str();
-					data.pop_back();
+					data.pop_back(); // removes the last '\n'
+					
+					while((data_temp = receiveTcpMessage(user_connsocket_fd, MAX_TCP_BUFFER)) != "\0")
+						data += data_temp;
+
+					cout << data << endl;
 					writeFile(filename, filesize, data);
 
 				} else{
