@@ -63,6 +63,8 @@
 
 using namespace std;
 
+void alarmCatcher(int error){}
+
 void printWrongUsageExit(){
 	printf("Usage: ./TRS language [-p TRSport] [-n TCSname] [-e TCSport]\n");
 	printf("In which language is this server's known language.\n");
@@ -97,8 +99,22 @@ string receiveUdpMessage(int socket_fd, int buffersize, int flags, sockaddr_in s
 		socklen_t addrlen = sizeof(src_addr);
 		char buffer[buffersize];
 		string final_message;
-		if(recvfrom(socket_fd, buffer, buffersize, 0, (struct sockaddr*) &src_addr, &addrlen) == -1) 
-			printSysCallFailed();
+
+		alarm(15);
+
+		if(recvfrom(socket_fd, buffer, buffersize, 0, (struct sockaddr*) &src_addr, &addrlen) == -1)
+		{
+			if (errno == EINTR)
+			{
+				cout << "Failed to connect with TCS. Trying again." << endl;
+				string t = "joiejfoiewjf";
+				return t;
+			} 
+			else
+				printSysCallFailed();
+		}
+
+		alarm(0);
 
 		for(int i = buffersize-1; i >= 0; i--)
 			if(buffer[i] == TERM_CHAR){
@@ -227,6 +243,10 @@ int main(int argc, char* argv[]){
 	int TCS_socket_fd;
 	struct hostent* tcs_ptr;
 	struct sockaddr_in tcs_address;
+
+	// Setting signal.
+	signal(SIGALRM,alarmCatcher);
+	siginterrupt(SIGALRM,1);
 
 	// Parse the arguments and the the variables accordingly.
 	if(argc < 2 || argc > 8)
