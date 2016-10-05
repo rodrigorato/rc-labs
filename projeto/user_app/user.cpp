@@ -256,19 +256,24 @@ int main(int argc, char** argv){
 						cout << "sent message:\n" <<message3<<"data"<<endl;
 						if(write(fd2, message3.c_str(), message3.length()) == -1) exit(1);
 
+
+
 						char content[size];
+       					fread(content, size,1 , file);//1, 1024 ou 1024,1?
+       					cout<<size<<endl;
+       					
+       					//printf("%s\n",content );
+						
 						int n;
 						int total=0;
-       					fread(content, size,1 , file);//1, 1024 ou 1024,1?
-       					printf("%s\n",content );
-       					cout<<size<<endl;
 
+   						while(total<size){
+							if((n=write(fd2, content+total, size-total)) == -1) exit(1);
+							total +=n;
+						}
 
-						while(total<size){
-							if ((n=write(fd2,content,size))==-1) exit(1);//escrever tudo de um vez parece má ideia
-       					   	total +=n;
-       					}
-       					   	cout<<n<<endl;
+			
+       					cout<<total<<endl;
        					fclose(file);
 						cout<< "cicle over"<<endl;
 
