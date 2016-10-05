@@ -21,6 +21,7 @@
 #include <string.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
+#include <signal.h>
 
 // C++ Headers/libs
 #include <iostream>
@@ -139,26 +140,6 @@ string receiveTcpMessage(int socketFd, int bufferSize){
 	return message;
 }
 
-/*
-string receiveTcpFile(int socketFd, int bufferSize){
-	int read_bytes = 0, n = 0;
-	char buffer[bufferSize];
-	string message;
-	cout << "going into the loop" << endl;
-	while(n != 0 || read_bytes == 0){
-		cout << "starting to read" << endl;
-		if((n = read(socketFd, buffer, bufferSize)) == -1)
-			printSysCallFailed();
-		read_bytes += n;
-		message += buffer;
-		cout << "ending the loop" << endl;
-	}
-	cout << "out goes the loop" << endl;
-	message += '\0';
-	return message;
-}
-*/
-
 void sendTcpMessage(int socketFd, string message){
 	if(write(socketFd, message.c_str(), strlen(message.c_str())) == -1) 
 		printSysCallFailed();
@@ -220,16 +201,21 @@ string getWordTranslation(string word){
 
 
 void writeFile(string filename, int filesize, string data){
-	ofstream file;
-  	file.open(filename.c_str(), ios::out | ios::trunc | ios::binary);
-  	file.write(data.c_str(), filesize);
-  	file.close();
+	FILE* file;
+	file = fopen(filename.c_str(), "w+");
+	fwrite(data.c_str(), filesize, 1, file);
+  	fclose(file);
 }
 
 string intToString(int num){
 	ostringstream s;
 	s << num;
 	return s.str();
+}
+
+int intLength(int i){
+	string a = intToString(i);
+	return a.length();
 }
 
 int main(int argc, char* argv[]){
@@ -452,10 +438,17 @@ int main(int argc, char* argv[]){
 					string filename , data, data_temp;
 					int filesize;
 					cmd  >> filename; // temp contains the filename
-					filename = "translated_" + filename;
 					cmd >> filesize;
 					data = cmd.str();
-					data = data.substr(20); // TO-DO actual math lol
+					int header_size =  strlen("TRQ") + 
+									   strlen("f") + 
+									   filename.length() + 
+									   intLength(filesize) + 
+									   strlen(" ") * 5;
+					data = data.substr(header_size - 1); // TRQ f name size data
+					filename = "totranslate_" + filename;
+					
+
 					//data.pop_back(); // removes the last '\n'
 
 					int n = 0, totalRead = data.length();
