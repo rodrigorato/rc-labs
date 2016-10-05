@@ -7,8 +7,12 @@
 #include <netdb.h>
 #include <string.h>
 
-#define PORT 59000
+#include <iostream>
+
+#define PORT 59002
 #define MESSAGE "hello"
+
+using namespace std;
 
 int main(){	
 	int fd, clientlen, newfd;
@@ -29,27 +33,45 @@ int main(){
 	printf("Connected successfully\n");
 
 	/* Will now try to write a file */
-	FILE *readf;
-	readf = fopen("read.png", "r");
-	char buff_read[1510];
-	fread(buff_read, 1510, 1, readf);
-	fclose(readf);
+	int fileToSend_size = 60938;
 
-	if(write(fd, buff_read, 1510) == -1) exit(1);
+	FILE *readf;
+	readf = fopen("client_will_send_this.jpg", "r");
+	char buff_read[fileToSend_size];
+	fread(buff_read, fileToSend_size, 1, readf);
+	fclose(readf);
+	int writtenBytes = 0, i = 0;
+
+	cout << writtenBytes << "/" << fileToSend_size << endl;
+	while(writtenBytes < fileToSend_size){
+		if((i = write(fd, buff_read + writtenBytes, fileToSend_size - writtenBytes)) == -1) exit(1);
+		writtenBytes += i;
+		cout << writtenBytes << "/" << fileToSend_size << endl;
+	}
+	cout << writtenBytes << "/" << fileToSend_size << endl;
 	printf("sent a file?\n");
 
 
 
 
 	/* Will now try to read a file */
+	int fileToRecv_size = 52932;
+
 	FILE *writef;
 	writef = fopen("client_got_this_back.jpg", "w+");
-	char buff_write[3218];
+	char buff_write[fileToRecv_size];
+	int readBytes = 0, j = 0;
 
-	if(read(fd, buff_write, 3218) == -1) exit(1);
+	cout << readBytes << "/" << fileToRecv_size << endl;
+	while(readBytes < fileToRecv_size){
+		if((j = read(fd, buff_write + readBytes, fileToRecv_size - readBytes)) == -1) exit(1);
+		readBytes += j;
+		cout << readBytes << "/" << fileToRecv_size << endl;
+	}
+	cout << readBytes << "/" << fileToRecv_size << endl;
 	printf("received a file?\n"); 
 
-	fwrite(buff_write, 3218, 1, writef);
+	fwrite(buff_write, fileToRecv_size, 1, writef);
 	fclose(writef);
 	
 	close(fd);

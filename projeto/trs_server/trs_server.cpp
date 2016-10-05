@@ -452,12 +452,13 @@ int main(int argc, char* argv[]){
 					//data.pop_back(); // removes the last '\n'
 
 					int n = 0, totalRead = data.length();
-					char dataBuffer[2048];
-					cout << data << endl;
+					char dataBuffer[filesize];
+					strcpy(dataBuffer, data.c_str());
+					//cout << data << endl;
 					printf("started the while loooooop\n");
-					while(totalRead < filesize){
+					while(totalRead < filesize && n != 0){
 						cout << "read " << totalRead << "/" << filesize << endl;
-						if((n = read(user_connsocket_fd, dataBuffer, 2048)) == -1)
+						if((n = read(user_connsocket_fd, dataBuffer + totalRead, filesize - totalRead)) == -1)
 							printSysCallFailed();
 						//cmd.str(dataBuffer);
 						data += dataBuffer;
