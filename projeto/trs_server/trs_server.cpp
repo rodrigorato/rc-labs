@@ -129,17 +129,6 @@ string receiveUdpMessage(int socket_fd, int buffersize, int flags, sockaddr_in s
 		return final_message;
 }
 
-string receiveTcpMessage(int socketFd, int bufferSize){
-	int read_bytes = 0;
-	char buffer[bufferSize];
-	string message;
-	if((read_bytes = read(socketFd, buffer, bufferSize)) == -1) 
-		printSysCallFailed();
-	buffer[read_bytes] = '\0';
-	message = buffer;
-	return message;
-}
-
 void sendTcpMessage(int socketFd, string message){
 	if(write(socketFd, message.c_str(), strlen(message.c_str())) == -1) 
 		printSysCallFailed();
@@ -200,10 +189,10 @@ string getWordTranslation(string word){
 }
 
 
-void writeFile(string filename, int filesize, string data){
+void writeFile(string filename, int filesize, char* data){
 	FILE* file;
 	file = fopen(filename.c_str(), "w+b");
-	fwrite(data.c_str(), filesize, 1, file);
+	fwrite(data, filesize, 1, file);
   	fclose(file);
 }
 
@@ -363,12 +352,13 @@ int main(int argc, char* argv[]){
 			printSysCallFailed();
 		else if(forkId == 0){
 			// Child process code, tries to read the user's request
-			
+			int read_bytes;
+			char response[MAX_TCP_BUFFER];
 
-			//string receiveTcpMessage(int socketFd, int bufferSize)
-			//void sendTcpMessage(int socketFd, string message)
+			if((read_bytes = read(user_connsocket_fd, response, MAX_TCP_BUFFER)) == -1) 
+				printSysCallFailed();
 
-			stringstream cmd; cmd << receiveTcpMessage(user_connsocket_fd, MAX_TCP_BUFFER);
+			stringstream cmd; cmd << response;
 			string temp; cmd >> temp;
 
 			if(temp == "TRQ"){
@@ -435,38 +425,38 @@ int main(int argc, char* argv[]){
 				} else if(temp == "f"){
 					// File translation
 					// TO-DO
-					string filename , data, data_temp;
+					string filename;
 					int filesize;
-					cmd  >> filename; // temp contains the filename
+					cmd >> filename; // temp contains the filename
 					cmd >> filesize;
-					data = cmd.str();
 					int header_size =  strlen("TRQ") + 
 									   strlen("f") + 
 									   filename.length() + 
 									   intLength(filesize) + 
 									   strlen(" ") * 5;
-					data = data.substr(header_size - 1); // TRQ f name size data
 					filename = "totranslate_" + filename;
 					
 
-					//data.pop_back(); // removes the last '\n'
-
-					int n = 0, totalRead = data.length();
+					int n = 0, totalRead = read_bytes - (header_size - 1);
 					char dataBuffer[filesize];
-					strcpy(dataBuffer, data.c_str());
-					//cout << data << endl;
+					
+					for(int j = header_size - 1, k = 0; j != read_bytes; j++, k++)
+						dataBuffer[k] = response[j];
+
 					printf("started the while loooooop\n");
-					while(totalRead < filesize && n != 0){
+					while(totalRead < filesize){
 						cout << "read " << totalRead << "/" << filesize << endl;
 						if((n = read(user_connsocket_fd, dataBuffer + totalRead, filesize - totalRead)) == -1)
 							printSysCallFailed();
 						//cmd.str(dataBuffer);
-						data += dataBuffer;
 						totalRead += n;
 					}
 					printf("finished the while loooooop\n");
 					cout << totalRead << "/" << filesize << endl;
-
+					
+					for(int z = 0; z < filesize; z++)
+						printf("%x ", dataBuffer[z]);
+					printf("ha\n"); cout << endl;
 					
 					/*
 					while((data_temp = receiveTcpMessage(user_connsocket_fd, MAX_TCP_BUFFER)) != "\0")
@@ -474,7 +464,7 @@ int main(int argc, char* argv[]){
 
 					cout << data << endl;
 					*/
-					writeFile(filename, filesize, data);
+					writeFile(filename, filesize, dataBuffer);
 
 				} else{
 					string response = "TRR ERR";
