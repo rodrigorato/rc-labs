@@ -12,7 +12,6 @@
 int main(){	
 	int fd, clientlen, newfd;
 	struct sockaddr_in serveraddr, clientaddr;
-	char buffer[128];	
 	
 	if((fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) exit(1);
 	
@@ -36,12 +35,29 @@ int main(){
 	
 
 	
+	/* Trying to receive a file */
+	FILE *writef;
+	writef = fopen("server_got_this.png", "w+");
+	char buffer_write[1510];
 
-	if(read(newfd, buffer, 128) == -1) exit(1);
-	printf("Received message:\n%s\n", buffer); 
+	if(read(newfd, buffer_write, 1510) == -1) exit(1);
+	printf("Received a file?\n"); 
 
-	if(write(newfd, buffer, strlen(buffer)) == -1) exit(1);
-	printf("Sent message:\n%s\n", buffer);	
+	fwrite(buffer_write, 1510, 1, writef);
+	fclose(writef);
+
+
+	/* Will now try to send a file */
+	FILE *readf;
+	readf = fopen("server_will_send_this.jpg", "r");
+	char buffer_read[3218];
+
+	fread(buffer_read, 3218, 1, readf);
+	printf("%s\n", buffer_read);
+	fclose(readf);
+
+	if(write(newfd, buffer_read, 3218) == -1) exit(1);
+	printf("Sent a file?\n");	
 
 	close(fd);
 	close(newfd);

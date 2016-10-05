@@ -14,11 +14,10 @@ int main(){
 	int fd, clientlen, newfd;
 	struct hostent* hostptr;
 	struct sockaddr_in serveraddr, clientaddr;
-	char buffer[128];	
 	
 	if((fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) exit(1);
 	
-	hostptr = gethostbyname("lima.tecnico.ulisboa.pt");
+	hostptr = gethostbyname("localhost");
 		
 	memset((void*)&serveraddr, (int)'\0', sizeof(serveraddr));
 	serveraddr.sin_family = AF_INET;
@@ -29,14 +28,29 @@ int main(){
 	if(connect(fd, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1) exit(1);
 	printf("Connected successfully\n");
 
+	/* Will now try to write a file */
+	FILE *readf;
+	readf = fopen("read.png", "r");
+	char buff_read[1510];
+	fread(buff_read, 1510, 1, readf);
+	fclose(readf);
 
-	if(write(fd, MESSAGE, strlen(MESSAGE)) == -1) exit(1);
-	printf("Sent message:\n%s\n", MESSAGE);	
+	if(write(fd, buff_read, 1510) == -1) exit(1);
+	printf("sent a file?\n");
 
 
-	if(read(fd, buffer, 128) == -1) exit(1);
-	printf("Received message:\n%s\n", buffer); 
 
+
+	/* Will now try to read a file */
+	FILE *writef;
+	writef = fopen("client_got_this_back.jpg", "w+");
+	char buff_write[3218];
+
+	if(read(fd, buff_write, 3218) == -1) exit(1);
+	printf("received a file?\n"); 
+
+	fwrite(buff_write, 3218, 1, writef);
+	fclose(writef);
 	
 	close(fd);
 
