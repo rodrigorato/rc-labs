@@ -218,8 +218,8 @@ int main(int argc, char** argv){
 
 					if(connect(fd2, (struct sockaddr*) &serveraddr2, sizeof(serveraddr2)) == -1) exit(1);//ta testado ate aqui pk nao trs
 					printf("Connected successfully\n");
-					string content;
-					int size;
+					char content[1024];
+					int size=0;
 					string message3 = "TRQ ";
 					message3 += tf;
 					message3 +=' ';
@@ -236,38 +236,54 @@ int main(int argc, char** argv){
 						}
 						message3 += '\n';
 						cout << "sent message: \n" << message3 << endl;	
+						if(write(fd2, message3.c_str(), message3.length()) == -1) exit(1);
 					}else if (tf=='f'){
 						string line,data;
 						stringstream temp3;
 						message3 += filename; 
 						message3 += ' ';
 						
-						ifstream file(filename,ios::ate);
-						if(file.is_open()){
-							int size = file.tellg(); //get size
-						    file.seekg (0, ios::beg); //go back to begining of file
-							content.resize(size);
+						//ifstream file(filename,ios::ate | ios::binary);
+						//if(file.is_open()){
+						FILE * file = fopen(filename, "r");// r ou rb?
 
-							file.read(&content[0],size);
-							/*
-							while (getline(file, line)){
-								data += line;
-							}
-							temp3<<data.length();
-							message3 += temp3.str();*/
+						fseek(file, 0L, SEEK_END);
+						size = ftell(file);
+						rewind(file);
 
-							temp3 <<size;
-							message3 += temp3.str();
-							message3 += ' ';
-							cout << "sent message:\n" <<message3<<"data"<<endl;
+						temp3 <<size;
+						message3 += temp3.str();
+						message3 += ' ';
+						cout << "sent message:\n" <<message3<<"data"<<endl;
+						if(write(fd2, message3.c_str(), message3.length()) == -1) exit(1);
+
+						int n;
+       					n=fread(content, size,1 , file);//1, 1024 ou 1024,1?
+						do {
+							if(write(fd2,content,n)==-1) exit(1);//escrever tudo de um vez parece má ideia
+       					   	
+       					}while(n<size);
+       					fclose(file);
+						cout<< "cicle over"<<endl;
+
 							
-							//cout<<content<<endl;
 							//message3 += content;
 							//message3 +='\n';
-						}else cout << "could not open file"<<endl;
+						//}else cout << "could not open file"<<endl;
 					}
-					if(write(fd2, message3.c_str(), message3.length()) == -1) exit(1);
-					if (tf=='f') if(write(fd2, &content[0], size) == -1) exit(1);
+					/*int n=0;
+					int num_bytes=0;
+					cout<<size;
+					void * sendingbuff = &content[0];
+					if (tf=='f') {
+						while(num_bytes<size){
+							if((n = write(fd2, sendingbuff, size)) == -1) exit(1);
+							num_bytes +=n;
+							cout<<num_bytes<<' ';
+						}
+					}
+							content[size]='\0';
+							cout<<content<<endl;*/
 					int num_bytes=0;
 					if (tf=='t'){
 						if((num_bytes=read(fd2, buffer2, 300000)) == -1) exit(1);
@@ -288,8 +304,9 @@ int main(int argc, char** argv){
 							}
 						}
 					}else{
+						do{
 						if((num_bytes=read(fd2, buffer2, 2048)) == -1) exit(1);
-
+						}while(num_bytes=0);
 							//sprintf(buffer, "TRR f mandibulas.pdf 3 aaa\n");
 //trr f jaws.jpg 6000 
 						if(!isError(buffer2)){
