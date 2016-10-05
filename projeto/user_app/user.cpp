@@ -244,7 +244,7 @@ int main(int argc, char** argv){
 						
 						//ifstream file(filename,ios::ate | ios::binary);
 						//if(file.is_open()){
-						FILE * file = fopen(filename, "r");// r ou rb?
+						FILE * file = fopen(filename, "rb");// r ou rb?
 
 						fseek(file, 0L, SEEK_END);
 						size = ftell(file);
@@ -258,11 +258,17 @@ int main(int argc, char** argv){
 
 						char content[size];
 						int n;
-       					n=fread(content, size,1 , file);//1, 1024 ou 1024,1?
-						do {
-							if(write(fd2,content,n)==-1) exit(1);//escrever tudo de um vez parece má ideia
-       					   	
-       					}while(n<size);
+						int total=0;
+       					fread(content, size,1 , file);//1, 1024 ou 1024,1?
+       					printf("%s\n",content );
+       					cout<<size<<endl;
+
+
+						while(total<size){
+							if ((n=write(fd2,content,size))==-1) exit(1);//escrever tudo de um vez parece má ideia
+       					   	total +=n;
+       					}
+       					   	cout<<n<<endl;
        					fclose(file);
 						cout<< "cicle over"<<endl;
 
