@@ -202,7 +202,7 @@ string getWordTranslation(string word){
 
 void writeFile(string filename, int filesize, string data){
 	FILE* file;
-	file = fopen(filename.c_str(), "w+");
+	file = fopen(filename.c_str(), "w+b");
 	fwrite(data.c_str(), filesize, 1, file);
   	fclose(file);
 }
@@ -453,16 +453,18 @@ int main(int argc, char* argv[]){
 
 					int n = 0, totalRead = data.length();
 					char dataBuffer[2048];
-
+					cout << data << endl;
 					printf("started the while loooooop\n");
 					while(totalRead < filesize){
+						cout << "read " << totalRead << "/" << filesize << endl;
 						if((n = read(user_connsocket_fd, dataBuffer, 2048)) == -1)
 							printSysCallFailed();
-						cmd.str(dataBuffer);
-						data += cmd.str();
+						//cmd.str(dataBuffer);
+						data += dataBuffer;
 						totalRead += n;
 					}
 					printf("finished the while loooooop\n");
+					cout << totalRead << "/" << filesize << endl;
 
 					
 					/*
