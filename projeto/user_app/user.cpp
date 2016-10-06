@@ -30,7 +30,13 @@
 using namespace std;
 //por if em gethosts, perguntar ao user what do do se o tejo nao responde , verificar se os argumentos tao certos,ostringstream
 //wantsAnswer é solucao ate se separar melhor as coisas, nao deixar fazer requests primeiro, nao ter numeros randoms no programa
-
+//assegurar k tamanho max sao cumpridos(filename)
+void hexa(char* buff,int size){
+	for(int i=0;i<size;i++){
+		printf("%x ",buff[i]);
+	}
+	printf("\n");
+}
 bool isError(char buff[]){
 	char mRead[3];
 	char m[3];
@@ -76,7 +82,8 @@ int main(int argc, char** argv){
 	string TCSname=TCSNAME;
 	
 	char languages[MAX_LANGS][MAX_SIZE_LANGUAGE], words[MAX_WORDS][MAX_SIZE_WORD];
-	char filename[MAX_FILE_NAME]; 
+	//char filename[MAX_FILE_NAME]; 
+	string filename;
 	char tf;//indicador se vai-se traduzir texto ou ficheiro
 	int numWords;
 	bool wantsAnswer=false;
@@ -166,7 +173,7 @@ int main(int argc, char** argv){
 			}else if(tf=='f'){// send images
 				
 				input_stream >> filename;
-				printf("Imagem a traduzir para %s: %s\n",languages[langNum-1],filename );
+				printf("Imagem a traduzir para %s: %s\n",languages[langNum-1],filename.c_str() );
 
 			}
 			wantsAnswer=true;
@@ -236,67 +243,9 @@ int main(int argc, char** argv){
 						message3 += '\n';
 						cout << "sent message: \n" << message3 << endl;	
 						if(write(fd2, message3.c_str(), message3.length()) == -1) exit(1);
-					}else if (tf=='f'){
-						string line,data;
-						stringstream temp3;
-						message3 += filename; 
-						message3 += ' ';
-						
-						//ifstream file(filename,ios::ate | ios::binary);
-						//if(file.is_open()){
-						FILE * file = fopen(filename, "rb");// r ou rb?
 
-						fseek(file, 0L, SEEK_END);
-						size = ftell(file);
-						rewind(file);
-
-						temp3 <<size;
-						message3 += temp3.str();
-						message3 += ' ';
-						cout << "sent message:\n" <<message3<<"data"<<endl;
-						if(write(fd2, message3.c_str(), message3.length()) == -1) exit(1);
-
-
-
-						char content[size];
-       					fread(content, size,1 , file);//1, 1024 ou 1024,1?
-       					cout<<size<<endl;
-       					
-       					//printf("%s\n",content );
-						
-						int n;
-						int total=0;
-
-   						while(total<size){
-							if((n=write(fd2, content+total, size-total)) == -1) exit(1);
-							total +=n;
-						}
-
-			
-       					cout<<total<<endl;
-       					fclose(file);
-						cout<< "cicle over"<<endl;
-
-							
-							//message3 += content;
-							//message3 +='\n';
-						//}else cout << "could not open file"<<endl;
-					}
-					/*int n=0;
-					int num_bytes=0;
-					cout<<size;
-					void * sendingbuff = &content[0];
-					if (tf=='f') {
-						while(num_bytes<size){
-							if((n = write(fd2, sendingbuff, size)) == -1) exit(1);
-							num_bytes +=n;
-							cout<<num_bytes<<' ';
-						}
-					}
-							content[size]='\0';
-							cout<<content<<endl;*/
-					int num_bytes=0;
-					if (tf=='t'){
+						//recieving anser
+						int num_bytes=0;
 						if((num_bytes=read(fd2, buffer2, 300000)) == -1) exit(1);
 						buffer2[num_bytes]='\0';
 						printf("Received message:\n%s\n", buffer2); 
@@ -314,95 +263,107 @@ int main(int argc, char** argv){
 									cout<<words[i]<<endl;
 							}
 						}
-					}else{
-						do{
-						if((num_bytes=read(fd2, buffer2, 2048)) == -1) exit(1);
-						}while(num_bytes==0);
-							//sprintf(buffer, "TRR f mandibulas.pdf 3 aaa\n");
-//trr f jaws.jpg 6000 
+
+					}else if (tf=='f'){
+						string line,data;
+						stringstream temp3;
+						message3 += filename; 
+						message3 += ' ';
+						
+						//ifstream file(filename,ios::ate | ios::binary);
+						//if(file.is_open()){
+						FILE * file = fopen(filename.c_str(), "rb");// r ou rb?
+
+						fseek(file, 0L, SEEK_END);
+						size = ftell(file);
+						rewind(file);
+
+						temp3 <<size;
+						message3 += temp3.str();
+						message3 += ' ';
+						cout << "sent message:\n" <<message3<<"data"<<endl;
+						if(write(fd2, message3.c_str(), message3.length()) == -1) exit(1);
+
+
+
+						char content[size];
+       					fread(content, size,1 , file);//1, 1024 ou 1024,1?
+       					fclose(file);
+       					cout<<size<<endl;
+       					//hexa(content,size);
+       					
+       					//printf("%s\n",content );
+						
+						int n;
+						int total=0;
+
+   						while(total<size){
+							if((n=write(fd2, content+total, size-total)) == -1) exit(1);
+							total +=n;
+							cout<<total<<'/'<<size<<endl;
+						}
+
+			
+       					cout<<total<<endl;
+						cout<< "file send "<<endl;
+
+							//message3 +='\n';
+						//}else cout << "could not open file"<<endl;
+					
+						// recieving responce and creating file
+
+						int num_bytes=0;
+						
+						while(num_bytes==0);
+							if((num_bytes=read(fd2, buffer2, 2048)) == -1) exit(1);
+						cout<<"read: "<<endl;
+						//trr f jaws.jpg 6000 
 						if(!isError(buffer2)){
-							printf("Received message:\n%s\n", buffer2); 
 							string temp4;
+							printf("Received message:\n%s\n", buffer2); 
 							int filesize;
 							stringstream st;
-							string data;
-							
+								
 							st.str(buffer2);
 							st >> temp4; //TRR
 							st >> tf;       //f
 							st >> filename;
 							st >> filesize ;
-/*
-							while(st >> temp4) data+=temp4;
-							cout<<"------------------"<<endl;
-							cout<<"data: "<<data<<endl;*/
-							data=st.str();
-							data=data.substr(28); //faz as contas
-							cout<<"------------------"<<endl;
-							cout<<"data1: "<<data<<endl;
-							int n=1;
-							num_bytes-=28;
-							int bytes_left=filesize - num_bytes;
-							while(bytes_left>0) {
-								cout<<bytes_left<<' ';
-								if((n=read(fd2, buffer2, 2048)) == -1) exit(1);
-								bytes_left -= n;
-								num_bytes+=n;
-								st.str(buffer2);
-								data = data+st.str();
-								//cout<<"STREAM::::::"<<st.str()<<endl;
-								//while(st >> temp4){ data+=temp4;}
+
+							stringstream temp;
+							temp << filesize;
+							string a =temp.str();
+
+							int headersize = 6+filename.length()+1 + a.length() +1;
+							filename="translated_"+filename;
+							char data[filesize];
+							int k;
+							for(int j = headersize , k = 0; j != num_bytes; j++, k++)
+								data[k] = buffer2[j];
+
+							total=num_bytes - headersize;
+							while(total < filesize){
+								cout << total << "/" << filesize << endl;
+								if((n = read(fd2, data + total, filesize - total)) == -1)
+									exit(1);
+								total += n;
 							}
-							ofstream received_file;	
-							received_file.open ("example.pdf",ios::trunc );
-							received_file.write(data.c_str(),filesize);
-							received_file.close();
-
-							data[data.length()-1]='\0';
-							cout<<"------------------"<<endl;
-							cout<<"data final: "<<data<<endl;
-
-/*	ifstream small("small.jpg",ios::ate);
-	ofstream myfile;
-	string line;
-	char* content;
-
-  	myfile.open ("example.jpg",ios::trunc);
-  	int size = small.tellg();
-    content = new char [size];
-    small.seekg (0, ios::beg);
-  	small.read(content,size);
-  	cout << size << endl;
-  	myfile.write(content,size);
-  	myfile.close();
-  	small.close();*/
-
-							
+							cout << total << "/" << filesize << endl;
+							FILE* file = fopen(filename.c_str(), "w+b");
+							fwrite(data, filesize,1 , file);
+							fclose(file);
 						}
 					}
-					
-
-
 					close(fd2);
 				}
 			}
 		}
 		wantsAnswer=false;
 		getline(cin, user_input);
-		//input_stream.str(input_stream.str().replace(0,input_stream.str().length(),user_input));
-		//input_stream << user_input;
 		stringstream s;
 		s<<user_input;
 		swapStreams(&s, &input_stream);
-		//s.swap(input_stream);
 		input_stream >> instruction;
-		//cout<<instruction<<endl;
-		
-		/*
-		for( i=0;user_input[i]!=' ';i++){
-			instruction[i]=user_input[i];
-		}*/
-		//scanf("%s", instruction);
 	}		
 	close(fd);
 
