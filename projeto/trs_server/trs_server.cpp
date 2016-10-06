@@ -490,7 +490,6 @@ int main(int argc, char* argv[]){
 					string response = "TRR ERR";
 					response += TERM_CHAR;
 					sendTcpMessage(user_connsocket_fd, response);
-
 				}
 			}
 
