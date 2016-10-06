@@ -211,6 +211,55 @@ int intLength(int i){
 	return a.length();
 }
 
+char* global_local_name;
+int global_TRSport, global_TCS_socket_fd;
+sockaddr_in global_tcs_address;
+string global_lang_name;
+
+// string unregisterWithTCS(int socket_fd, sockaddr_in src_addr, int flags, string language, string ourIP, int ourPort){
+void intHandler(int signal){
+	string TCSresp;
+	printf("[%s:%d] - Telling the TCS that we are going offline.\n", global_local_name, global_TRSport);
+	while((TCSresp = unregisterWithTCS(global_TCS_socket_fd, global_tcs_address, 0, global_lang_name, getMyIp(MAX_COMPUTER_NAME), global_TRSport)) != TCS_SUN_OK){
+		// Failed to register with the TCS
+		if (TCSresp == TCS_SUN_NOK){
+			// Due to NOK message
+			printf("\n[!] - Got the NOK message, care to try again? (y for yes, n for no)\n> ");
+			char r; 
+			if(scanf("%c", &r) != 1) printSysCallFailed();
+			if(r == 'n'){
+				printf("Exiting.\n");
+				exit(1);
+			}
+
+		} else if (TCSresp == TCS_SUN_ERR){
+			// Due to ERR message
+			printf("\n[!] - Got the ERR message, care to try again? (y for yes, n for no)\n> ");
+			char r; 
+			if(scanf("%c", &r) != 1) printSysCallFailed();
+			if(r == 'n'){
+				printf("Exiting.\n");
+				exit(1);
+			}
+		} else{
+			// Due to protocol error	
+			printf("\n[!] - Procol message format was wrong, care to try again? (y for yes, n for no)\n> ");
+			char r; 
+			if(scanf("%c", &r) != 1) printSysCallFailed();
+			if(r == 'n'){
+				printf("Exiting.\n");
+				exit(1);
+			}
+		}
+	}
+	// Successfully unregistered with the TCS
+	printf("[%s:%d] - Successfully unregistered with the TRS.\n", global_local_name, global_TRSport);
+
+	printf("[%s:%d] - All done, now exiting.\n", global_local_name, global_TRSport);
+	if(close(global_TCS_socket_fd) == -1) printSysCallFailed();
+	exit(0);
+}
+
 int main(int argc, char* argv[]){
 	// TRS config variables.
 	int TRSport = TRSPORT_CONST, TCSport = TCSPORT_CONST;
@@ -286,20 +335,46 @@ int main(int argc, char* argv[]){
 	string TCSresp;
 	while((TCSresp = registerWithTCS(TCS_socket_fd, tcs_address, 0, lang_name, getMyIp(MAX_COMPUTER_NAME), TRSport)) != TCS_SRR_OK){
 		// Failed to register with the TCS
-		if (TCSresp == TCS_SRR_NOK){
+		if (TCSresp == TCS_SUN_NOK){
 			// Due to NOK message
-			printf("NOK\n");
-		} else if (TCSresp == TCS_SRR_ERR){
+			printf("\n[!] - Got the NOK message, care to try again? (y for yes, n for no)\n> ");
+			char r; 
+			if(scanf("%c", &r) != 1) printSysCallFailed();
+			if(r == 'n'){
+				printf("Exiting.\n");
+				exit(1);
+			}
+
+		} else if (TCSresp == TCS_SUN_ERR){
 			// Due to ERR message
-			printf("ERR\n");
+			printf("\n[!] - Got the ERR message, care to try again? (y for yes, n for no)\n> ");
+			char r; 
+			if(scanf("%c", &r) != 1) printSysCallFailed();
+			if(r == 'n'){
+				printf("Exiting.\n");
+				exit(1);
+			}
 		} else{
 			// Due to protocol error	
-			printf("PROTO ERR\n");
+			printf("\n[!] - Procol message format was wrong, care to try again? (y for yes, n for no)\n> ");
+			char r; 
+			if(scanf("%c", &r) != 1) printSysCallFailed();
+			if(r == 'n'){
+				printf("Exiting.\n");
+				exit(1);
+			}
 		}
 	}
 
 	//Registered with the TCS successfully
 	printf("Success!\n");
+	signal(SIGINT, intHandler);
+	global_local_name = local_name;
+	global_TRSport = TRSport;
+	global_TCS_socket_fd = TCS_socket_fd;
+	global_tcs_address = tcs_address;
+	global_lang_name = lang_name;
+
 	
 	// Now accepting connections from the users, starting the TCP server
 	int user_serversocket_fd, user_connsocket_fd;
@@ -524,14 +599,32 @@ int main(int argc, char* argv[]){
 		// Failed to register with the TCS
 		if (TCSresp == TCS_SUN_NOK){
 			// Due to NOK message
-			printf("NOK\n");
+			printf("\n[!] - Got the NOK message, care to try again? (y for yes, n for no)\n> ");
+			char r; 
+			if(scanf("%c", &r) != 1) printSysCallFailed();
+			if(r == 'n'){
+				printf("Exiting.\n");
+				exit(1);
+			}
 
 		} else if (TCSresp == TCS_SUN_ERR){
 			// Due to ERR message
-			printf("ERR\n");
+			printf("\n[!] - Got the ERR message, care to try again? (y for yes, n for no)\n> ");
+			char r; 
+			if(scanf("%c", &r) != 1) printSysCallFailed();
+			if(r == 'n'){
+				printf("Exiting.\n");
+				exit(1);
+			}
 		} else{
 			// Due to protocol error	
-			printf("PROTO ERR\n");
+			printf("\n[!] - Procol message format was wrong, care to try again? (y for yes, n for no)\n> ");
+			char r; 
+			if(scanf("%c", &r) != 1) printSysCallFailed();
+			if(r == 'n'){
+				printf("Exiting.\n");
+				exit(1);
+			}
 		}
 	}
 	// Successfully unregistered with the TCS
