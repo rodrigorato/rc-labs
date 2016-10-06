@@ -49,6 +49,7 @@
 #define MAX_CHARS_TCP_PROTO_MESSAGE 10240
 #define MAX_TCP_BUFFER 256
 #define TRANSLATION_NOT_AVAILABLE_WORD ""
+#define UDP_RECV_ERROR ""
 
 #define MAX_COMPUTER_NAME 25 // Ask. Idunno.
 #define MAX_USER_BACKLOG 5
@@ -109,7 +110,7 @@ string receiveUdpMessage(int socket_fd, int buffersize, int flags, sockaddr_in s
 			if (errno == EINTR)
 			{
 				cout << "Failed to connect with TCS. Trying again." << endl;
-				string t = "joiejfoiewjf";
+				string t = UDP_RECV_ERROR;
 				return t;
 			} 
 			else
@@ -141,8 +142,10 @@ string getMyIp(int buffersize){
 	char buffer[buffersize];
 	string ip;
 
-	gethostname(buffer, buffersize);
-	if((h=gethostbyname(buffer))==NULL)exit(1);//error
+	if(gethostname(buffer, buffersize) == -1)
+		printSysCallFailed();
+
+	if((h=gethostbyname(buffer))==NULL)printSysCallFailed();//error
 
 	a=(struct in_addr*)h->h_addr_list[0];
 	ip = inet_ntoa(*a);
@@ -192,8 +195,13 @@ string getTranslation(string word, string sourceFile){
 void writeFile(string filename, int filesize, char* data){
 	FILE* file;
 	file = fopen(filename.c_str(), "w+b");
-	fwrite(data, filesize, 1, file);
-  	fclose(file);
+	if(!file) printSysCallFailed();
+	int totalWritten = 0, n = 0;
+	while(totalWritten < filesize){
+		if((n = fwrite(data, filesize, 1, file)) == 0) printSysCallFailed();
+		totalWritten += n;
+	}
+  	if(fclose(file) == EOF) printSysCallFailed();
 }
 
 string intToString(int num){
@@ -220,8 +228,8 @@ int main(int argc, char* argv[]){
 	struct sockaddr_in tcs_address;
 
 	// Setting signal.
-	signal(SIGALRM,alarmCatcher);
-	siginterrupt(SIGALRM,1);
+	if(signal(SIGALRM,alarmCatcher) == SIG_ERR) printSysCallFailed();
+	if(siginterrupt(SIGALRM,1) == -1) printSysCallFailed();
 
 	// Parse the arguments and the the variables accordingly.
 	if(argc < 2 || argc > 8)
@@ -232,7 +240,7 @@ int main(int argc, char* argv[]){
 
 		switch(argv[i][1]){
 			case 'p': // NEW TRSport
-				sscanf(argv[i+1], "%d", &TRSport);
+				if(sscanf(argv[i+1], "%d", &TRSport) == EOF) printSysCallFailed();
 				printf("[!] - Custom TRS port set to %d.\n", TRSport);
 				break;
 
@@ -245,7 +253,7 @@ int main(int argc, char* argv[]){
 				break;
 
 			case 'e': // NEW TCSport
-				sscanf(argv[i+1], "%d", &TCSport);
+				if(sscanf(argv[i+1], "%d", &TCSport) == EOF) printSysCallFailed();
 				printf("[!] - Custom TCS port set to %d.\n", TCSport);
 				break;
 
@@ -273,7 +281,7 @@ int main(int argc, char* argv[]){
 	printf("[%s:%d] - Setting up socket settings... ", local_name, TRSport); fflush(stdout);
 	memset((void*)&tcs_address, (int)'\0', sizeof(tcs_address)); // Clears tcs_address's struct
 	tcs_address.sin_family = AF_INET; // Setting up the socket's struct
-	tcs_address.sin_addr.s_addr = ((struct in_addr*) (tcs_ptr->h_addr_list[0]))->s_addr; // THIS IS FAILING!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!	
+	tcs_address.sin_addr.s_addr = ((struct in_addr*) (tcs_ptr->h_addr_list[0]))->s_addr;
 	tcs_address.sin_port = htons((u_short)TCSport); 
 	printf("Success!\n");
 
@@ -474,8 +482,10 @@ int main(int argc, char* argv[]){
 							// We got a translation, sending it over!
 							FILE* translatedFile;
 							translatedFile = fopen(transfileName.c_str(), "rb");
-							fseek(translatedFile, 0L, SEEK_END);
+							if(!translatedFile) printSysCallFailed();
+							if(fseek(translatedFile, 0L, SEEK_END) == -1) printSysCallFailed();
 							int transfileSize = ftell(translatedFile);
+							if(transfileSize == -1) printSysCallFailed();
 							rewind(translatedFile);
 
 							printf("[f-> %s] Translation available on file \"%s\" (%d bytes)! Trying to send it.\n", userNameAndPort.c_str(), transfileName.c_str(), transfileSize);
@@ -483,8 +493,9 @@ int main(int argc, char* argv[]){
 							sendTcpMessage(user_connsocket_fd, msg1);
 
 							char content[transfileSize];
-							fread(content, transfileSize, 1, translatedFile);
-							fclose(translatedFile);
+							int tempResult;
+							while(fread(content, transfileSize, 1, translatedFile) == 1);
+							if(fclose(translatedFile) == EOF) printSysCallFailed();
 
 							int num, totalWritten = 0;
 							while(totalWritten < transfileSize){
@@ -502,12 +513,12 @@ int main(int argc, char* argv[]){
 				}
 			}
 
-			close(user_connsocket_fd);
+			if(close(user_connsocket_fd) == -1) printSysCallFailed();
 			exit(0);
 		}
 	}
 
-	close(user_serversocket_fd);
+	if(close(user_serversocket_fd) == -1) printSysCallFailed();
 	
 	
 	
@@ -531,6 +542,6 @@ int main(int argc, char* argv[]){
 	printf("[%s:%d] - Successfully unregistered with the TRS.\n", local_name, TRSport);
 
 	printf("[%s:%d] - All done, now exiting.\n", local_name, TRSport);
-	close(TCS_socket_fd);
+	if(close(TCS_socket_fd) == -1) printSysCallFailed();
 	return 0;
 }
