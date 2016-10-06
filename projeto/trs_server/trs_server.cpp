@@ -450,42 +450,51 @@ int main(int argc, char* argv[]){
 							printSysCallFailed();
 						totalRead += n;
 					}
-					writeFile(saved_filename, filesize, dataBuffer);
-					printf("[<-f %s] Saved the received file to disk on \"%s\" (%d bytes).\n", userNameAndPort.c_str(), saved_filename.c_str(), filesize);
+					char msgEnd[1];
+					if((n = read(user_connsocket_fd, msgEnd, 1)) == -1)
+						printSysCallFailed();
 
-					string transfileName;
-					if((transfileName = getTranslation(filename, FILE_TRANSLATION_FILENAME)) == TRANSLATION_NOT_AVAILABLE_WORD){
-						// Translation not available...
-						string msg1 = "TRR NTA";
-						msg1 += TERM_CHAR;
-						printf("[f-> %s] Answering user with NTA (translation not available).\n", userNameAndPort.c_str());
-						sendTcpMessage(user_connsocket_fd, msg1);
-
+					if(msgEnd[0] != TERM_CHAR){
+						string errMsg = "TRR ERR";
+						errMsg += TERM_CHAR;
+						sendTcpMessage(user_connsocket_fd, errMsg);
 					} else {
-						// We got a translation, sending it over!
-						FILE* translatedFile;
-						translatedFile = fopen(transfileName.c_str(), "rb");
-						fseek(translatedFile, 0L, SEEK_END);
-						int transfileSize = ftell(translatedFile);
-						rewind(translatedFile);
+						writeFile(saved_filename, filesize, dataBuffer);
+						printf("[<-f %s] Saved the received file to disk on \"%s\" (%d bytes).\n", userNameAndPort.c_str(), saved_filename.c_str(), filesize);
 
-						printf("[f-> %s] Translation available on file \"%s\" (%d bytes)! Trying to send it.\n", userNameAndPort.c_str(), transfileName.c_str(), transfileSize);
-						string msg1 = "TRR f " + transfileName + " " + intToString(transfileSize) + " ";
-						sendTcpMessage(user_connsocket_fd, msg1);
+						string transfileName;
+						if((transfileName = getTranslation(filename, FILE_TRANSLATION_FILENAME)) == TRANSLATION_NOT_AVAILABLE_WORD){
+							// Translation not available...
+							string msg1 = "TRR NTA";
+							msg1 += TERM_CHAR;
+							printf("[f-> %s] Answering user with NTA (translation not available).\n", userNameAndPort.c_str());
+							sendTcpMessage(user_connsocket_fd, msg1);
 
-						char content[transfileSize];
-						fread(content, transfileSize, 1, translatedFile);
-						fclose(translatedFile);
+						} else {
+							// We got a translation, sending it over!
+							FILE* translatedFile;
+							translatedFile = fopen(transfileName.c_str(), "rb");
+							fseek(translatedFile, 0L, SEEK_END);
+							int transfileSize = ftell(translatedFile);
+							rewind(translatedFile);
 
-						int num, totalWritten = 0;
-						while(totalWritten < transfileSize){
-							if((num = write(user_connsocket_fd, content + totalWritten, transfileSize - totalWritten)) == -1)
-								printSysCallFailed();
-							totalWritten += num;
+							printf("[f-> %s] Translation available on file \"%s\" (%d bytes)! Trying to send it.\n", userNameAndPort.c_str(), transfileName.c_str(), transfileSize);
+							string msg1 = "TRR f " + transfileName + " " + intToString(transfileSize) + " ";
+							sendTcpMessage(user_connsocket_fd, msg1);
+
+							char content[transfileSize];
+							fread(content, transfileSize, 1, translatedFile);
+							fclose(translatedFile);
+
+							int num, totalWritten = 0;
+							while(totalWritten < transfileSize){
+								if((num = write(user_connsocket_fd, content + totalWritten, transfileSize - totalWritten)) == -1)
+									printSysCallFailed();
+								totalWritten += num;
+							}
+							printf("[f-> %s] Successfully sent the translated file \"%s\" (%d bytes).\n", userNameAndPort.c_str(), transfileName.c_str(), transfileSize);
 						}
-						printf("[f-> %s] Successfully sent the translated file \"%s\" (%d bytes).\n", userNameAndPort.c_str(), transfileName.c_str(), transfileSize);
 					}
-
 				} else{
 					string response = "TRR ERR";
 					response += TERM_CHAR;
