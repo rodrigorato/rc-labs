@@ -17,26 +17,31 @@
 #define TCSNAME "localhost"
 #define TCSPORT 58014
 
-#define MESSAGE1 "ULQ\n"
+#define ULQ "ULQ\n"
+#define UNQ "UNQ "
+#define ULR "ULR"
+#define UNR "UNR"
+#define TRQ "TRQ "
+#define TRR "TRR"
 //#define MESSAGE2 "UNQ "
-
+#define BUFFER_SIZE 256
 #define MAX_SIZE_WORD 30
 #define MAX_WORDS 10
 #define MAX_SIZE_LANGUAGE 20
 #define MAX_LANGS 99
-#define MAX_COMPUTER_NAME 256 // Ask. Idunno.
+#define MAX_COMPUTER_NAME 50 // Ask. Idunno.
 #define MAX_FILE_NAME  99 //idk
 
 using namespace std;
 //por if em gethosts, perguntar ao user what do do se o tejo nao responde , verificar se os argumentos tao certos,ostringstream
 //wantsAnswer é solucao ate se separar melhor as coisas, nao deixar fazer requests primeiro, nao ter numeros randoms no programa
-//assegurar k tamanho max sao cumpridos(filename), erros no fopen fseek e cenas
-void hexa(char* buff,int size){
+//assegurar k tamanho max sao cumpridos(filename), erros no fopen fseek e cenas, ,verificar mensagens de user e server
+/*void hexa(char* buff,int size){
 	for(int i=0;i<size;i++){
 		printf("%x ",buff[i]);
 	}
 	printf("\n");
-}
+}*/
 bool isError(char buff[]){
 	char mRead[3];
 	char m[3];
@@ -49,22 +54,28 @@ bool isError(char buff[]){
 	else return false;
 	return true;
 }
-/*
-int startUDP(int fd,struct hostent* hostptr,string TCSname,struct sockaddr_in serveraddr,int TCSport){
-	if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) exit(1);//udp
+void oppsError(){
+	printf("There was an error\n");
+	exit(1);
+}
 
-		hostptr = gethostbyname(TCSname.c_str());
+struct sockaddr_in startUDP(struct hostent* hostptr,string TCSname,struct sockaddr_in serveraddr,int TCSport){
+
+		if((hostptr = gethostbyname(TCSname.c_str()))==NULL) oppsError();
 			
 		memset((void*)&serveraddr, (int)'\0', sizeof(serveraddr));
 		serveraddr.sin_family = AF_INET;
 		serveraddr.sin_addr.s_addr = ((struct in_addr*) (hostptr->h_addr_list[0]))->s_addr;
 		serveraddr.sin_port = htons((u_short)TCSport);
-			
-		addrlen = sizeof(serveraddr);
-}*/
-void oppsError(){
-	printf("There was an error\n");
-	exit(1);
+		
+		return serveraddr;
+}
+
+int intLength(int n){
+	stringstream ss;
+	ss << n;
+	string s =ss.str();
+	return s.length();
 }
 
 void swapStreams(stringstream* a, stringstream *b){
@@ -79,10 +90,10 @@ int main(int argc, char** argv){
 	socklen_t addrlen;
 	struct hostent* hostptr;
 	struct sockaddr_in serveraddr;
-	char buffer[128];//,instruction[8];
-	char message[128];   //  buffer and message have a random bullshit size
 	int TCSport=TCSPORT;
 	string TCSname=TCSNAME;
+	char buffer[BUFFER_SIZE];
+	
 	
 	char languages[MAX_LANGS][MAX_SIZE_LANGUAGE], words[MAX_WORDS][MAX_SIZE_WORD];
 	//char filename[MAX_FILE_NAME]; 
@@ -116,7 +127,9 @@ int main(int argc, char** argv){
 				printf("wrong input\n");
 		}
 	}
-	
+	bool first=true;
+	bool fdOpen=false;
+
 	string user_input,instruction;
 	stringstream input_stream;
 	getline(cin, user_input);
@@ -129,163 +142,167 @@ int main(int argc, char** argv){
 
 			if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) oppsError();//udp
 
-			if((hostptr = gethostbyname(TCSname.c_str()))==NULL) oppsError();
-
-			memset((void*)&serveraddr, (int)'\0', sizeof(serveraddr));
-			serveraddr.sin_family = AF_INET;
-			serveraddr.sin_addr.s_addr = ((struct in_addr*) (hostptr->h_addr_list[0]))->s_addr;
-			serveraddr.sin_port = htons((u_short)TCSport);
-			
+			serveraddr=startUDP(hostptr,TCSname,serveraddr,TCSport);
 			addrlen = sizeof(serveraddr);
+			fdOpen = true;
+
 			//ULQ\n
-			if(sendto(fd, MESSAGE1, strlen(MESSAGE1), 0, (struct sockaddr*) &serveraddr, addrlen) == -1) oppsError();
+			if(sendto(fd, ULQ, strlen(ULQ), 0, (struct sockaddr*) &serveraddr, addrlen) == -1) oppsError();
 			
 			//printf("Sent message:%s", MESSAGE1);//ULQ
+			first=false;
 			wantsAnswer=true;
 		}
 		else if (!strcmp(instruction.c_str(),"request")){ //request n t palvra
-			int langNum;
-
-			if (input_stream >> langNum && input_stream >> tf){
-
-				//UNQ + language   languages[langNum-1]
-				string message2="UNQ ";
-				string temp2= languages[langNum-1];
-				message2+=temp2;
-				message2+='\n';
-				
-				if(sendto(fd, message2.c_str(), message2.length() + 1, 0, (struct sockaddr*) &serveraddr, addrlen) == -1) exit(1);
-				printf("Sent message: %s", message2.c_str());//UNQ language
-
-				if(tf=='t'){
-					printf("Palavras a traduzir para %s:\n",languages[langNum-1]);
-					int i;
-					for(i=0;input_stream >> words[i];i++){
-						printf("%s\n",words[i]);
-					}
-					numWords=i;
-
-					
-				}else if(tf=='f'){// send images
-					
-					input_stream >> filename;
-					printf("Imagem a traduzir para %s: %s\n",languages[langNum-1],filename.c_str() );
-
+			if (first) printf("You must must first use 'list' before you can request\n");
+			else{
+				if(!fdOpen){
+					if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) oppsError();
+					serveraddr=startUDP(hostptr,TCSname,serveraddr,TCSport);
+					addrlen = sizeof(serveraddr);
+					fdOpen = true;
 				}
-				wantsAnswer=true;
-			}
+				int langNum;
+				if (input_stream >> langNum && input_stream >> tf){
 
+					//UNQ + language   languages[langNum-1]
+					string message=UNQ;
+					string temp= languages[langNum-1];
+					message+=temp;
+					message+='\n';
+					
+					if(sendto(fd, message.c_str(), message.length() , 0, (struct sockaddr*) &serveraddr, addrlen) == -1) oppsError();
+					printf("Sent message: %s", message.c_str());//UNQ language
+
+					if(tf=='t'){
+						printf("Palavras a traduzir para %s:\n",languages[langNum-1]);
+						int i;
+						printf("->");
+						for(i=0;input_stream >> words[i];i++){
+							printf("%s ",words[i]);
+						}
+						printf("\n");
+						numWords=i;
+						wantsAnswer=true;
+
+					}else if(tf=='f'){// send images
+						
+						wantsAnswer=true;
+						input_stream >> filename;
+						printf("Imagem a traduzir para %s: %s\n",languages[langNum-1],filename.c_str() );
+					}else{printf("wrong input\n");}
+				}else{printf("wrong input\n");}
+			}
 		}
-		if (wantsAnswer){
-			int num_bytes=0;                                   // recieving message from central server
-			if((num_bytes=recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &serveraddr, &addrlen)) == -1) exit(1);
-			buffer[num_bytes]='\0';
-			printf("Received message:\n%s",buffer); 
-	//to do: por issto numa funçao á parte
+		if (wantsAnswer){     // recieving message from central server
+			char message[3];// array para onde se vai copiar as instrucoes de 3 chars (ULR,UNR)
+			                                 
+			if(recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &serveraddr, &addrlen) == -1) oppsError();//aqui
+			//buffer[num_bytes]='\0';
+			//printf("Received message:\n%s",buffer); 
 			sscanf(buffer,"%s", message);
 			if (!isError(buffer)){
-				if(!strcmp(message,"ULR")){    //ULR , resposta ao pedido de linguas
+				if(!strcmp(message,ULR)){    //ULR , resposta ao pedido de linguas
 					int numLangs;
 					sscanf(buffer,"%s %d",message, &numLangs);//ULR 3 frances ingles whatever
 					printf("Languages available:\n");
 
-					int i, j;
-					if(numLangs>9) i=7;
-					else i=6;
-					
+					int i = strlen(ULR)+intLength(numLangs)+strlen(" ")*2;//indice para inicio da 1a lingua
+					int j;
 					for(int l=0; l<numLangs;l++){
-						for (j=0; buffer[i]!=' ' && buffer[i]!='\n' /*&& buffer[i]!='\0'*/;j++,i++)
+						for (j=0; buffer[i]!=' ' && buffer[i]!='\n';j++,i++)
 							languages[l][j]=buffer[i];
 						languages[l][j]='\0'; 
 						i++;
 						printf("%d - %s\n", l+1, languages[l]);
 					}
 				
-				}else if (!strcmp(message,"UNR")){//UNR lingua ip port, e depois comunicacao com trs
-					char ipTRS[16];    //provavelmente sitiu mau pa declarar isto??????
+				}else if (!strcmp(message,UNR)){//UNR lingua ip port, e depois comunicacao com trs
+					char ipTRS[16];//16-tamanho maximo de ip
 					int portTRS;
-					sscanf(buffer, "%s %s %d",message, ipTRS,&portTRS); //id é string num ou struct hostent*?
+					sscanf(buffer, "%s %s %d",message, ipTRS,&portTRS); 
 
 					//inicio comunicacao com TRS usando TCP
 					int fd2;
 					struct hostent* hostptr2;
 					struct sockaddr_in serveraddr2;
-					char buffer2[256];
+					char buffer2[BUFFER_SIZE];
 
-					if((fd2 = socket(AF_INET, SOCK_STREAM, 0)) == -1) exit(1);
-					if((hostptr2=gethostbyname(ipTRS))==NULL) printf("erro gethostbyname\n"); // to do: exit(1)
+					if((fd2 = socket(AF_INET, SOCK_STREAM, 0)) == -1) oppsError();
+					if((hostptr2=gethostbyname(ipTRS))==NULL) oppsError(); 
 
 					memset((void*)&serveraddr2, (int)'\0', sizeof(serveraddr2));
 					serveraddr2.sin_family = AF_INET;
-					serveraddr2.sin_addr.s_addr = ((struct in_addr*) (hostptr2->h_addr_list[0]))->s_addr;//seg fault
+					serveraddr2.sin_addr.s_addr = ((struct in_addr*) (hostptr2->h_addr_list[0]))->s_addr;
 					serveraddr2.sin_port = htons((u_short)portTRS);
 
-					if(connect(fd2, (struct sockaddr*) &serveraddr2, sizeof(serveraddr2)) == -1) exit(1);//ta testado ate aqui pk nao trs
-					printf("Connected successfully\n");
+					if(connect(fd2, (struct sockaddr*) &serveraddr2, sizeof(serveraddr2)) == -1) oppsError();
+					printf("Connected to TRS successfully\n");
 					int size=0;
-					string message3 = "TRQ ";
-					message3 += tf;
-					message3 +=' ';
+					string message2 = TRQ;
+					message2 += tf;
+					message2 +=' ';
 					if(tf=='t'){
 						stringstream stream;
 						stream << numWords;
-						message3 += stream.str();
+						message2 += stream.str();
 						
 						for(int i=0; i<numWords;i++){	
 							stringstream s ;
 							s<< words[i];
-							message3+= ' ' + s.str();
-							//cout<< message3<<endl;
+							message2+= ' ' + s.str();
 						}
-						message3 += '\n';
-						cout << "sent message: \n" << message3 << endl;	
-						if(write(fd2, message3.c_str(), message3.length()) == -1) exit(1);
+						message2 += '\n';
+						//cout << "sent message: \n" << message2 << endl;	
+						if(write(fd2, message2.c_str(), message2.length()) == -1) oppsError();
 
-						//recieving anser
+						//recieving answer
 						int num_bytes=0;
-						if((num_bytes=read(fd2, buffer2, 256)) == -1) exit(1);
+						if((num_bytes=read(fd2, buffer2, BUFFER_SIZE)) == -1) oppsError();
 						buffer2[num_bytes]='\0';
-						printf("Received message:\n%s\n", buffer2); 
+						//printf("Received message:\n%s\n", buffer2); 
 
 						if(!isError(buffer2)){
-							
-							stringstream st;
-							st.str(buffer2);
-							st >> buffer2;//lixo, TRR é preciso verificar?
-							st >> tf;
-							st >>numWords;
-							if (tf=='t'){
-								cout << "traducao:"<<endl;
-								for(int i=0;st >> words[i];i++)
-									cout<<words[i]<<endl;
+							stringstream s;
+							string trr;
+							s.str(buffer2);
+							s >> trr;//lixo, TRR é preciso verificar?
+							if(trr==TRR){
+								s >> tf;
+								s >>numWords;
+								if (tf=='t'){ //verificacao desnecessaria?
+									cout << "traducao:\n->";
+									for(int i=0;s >> words[i];i++)
+										cout<<words[i]<<' ';
+									cout<<endl;
+								}
 							}
 						}
 
 					}else if (tf=='f'){
-						string line,data;
-						stringstream temp3;
-						message3 += filename; 
-						message3 += ' ';
+						stringstream temp;
+						message2 += filename; 
+						message2 += ' ';
 						
 						//if(file.is_open()){
-						FILE * file = fopen(filename.c_str(), "rb");// r ou rb?
+						FILE * file = fopen(filename.c_str(), "rb");
+						if (!file) oppsError();
 
-						fseek(file, 0L, SEEK_END);
-						size = ftell(file);
+						if(fseek(file, 0L, SEEK_END) == -1) oppsError() ;
+						if((size = ftell(file))==-1) oppsError();
 						rewind(file);
 
-						temp3 <<size;
-						message3 += temp3.str();
-						message3 += ' ';
-						cout << "sent message:\n" <<message3<<"data"<<endl;
-						if(write(fd2, message3.c_str(), message3.length()) == -1) exit(1);
-
+						temp <<size;
+						message2 += temp.str();
+						message2 += ' ';
+						//cout << "sent message:\n" <<message2<<"data"<<endl;
+						if(write(fd2, message2.c_str(), message2.length()) == -1) oppsError();
 
 
 						char content[size];
-       					fread(content, size,1 , file);//1, 1024 ou 1024,1?
-       					fclose(file);
-       					cout<<size<<endl;
+       					while(fread(content, size,1 , file)==1);//1, 1024 ou 1024,1?
+       					if(fclose(file)==EOF) oppsError();
+       					//cout<<size<<endl;
        					//hexa(content,size);
        					
        					//printf("%s\n",content );
@@ -294,13 +311,13 @@ int main(int argc, char** argv){
 						int total=0;
 
    						while(total<size){
-							if((n=write(fd2, content+total, size-total)) == -1) exit(1);
+							if((n=write(fd2, content+total, size-total)) == -1) oppsError();
 							total +=n;
-							cout<<total<<'/'<<size<<endl;
+							//cout<<total<<'/'<<size<<endl;
 						}
-						if((write(fd2, "\n", 1)) == -1) exit(1);
+						if((write(fd2, "\n", 1)) == -1) oppsError();
 			
-       					cout<<total<<endl;
+       					//cout<<total<<endl;
 						cout<< "file send "<<endl;
 
 							//message3 +='\n';
@@ -312,49 +329,60 @@ int main(int argc, char** argv){
 
 						int num_bytes=0;
 						
-						if((num_bytes=read(fd2, buffer2, 256)) == -1) exit(1);
-						cout<<"read: "<<endl;
+						if((num_bytes=read(fd2, buffer2, 256)) == -1) oppsError();
+						
 						//trr f jaws.jpg 6000 
 						if(!isError(buffer2)){
 							string temp4;
-							printf("Received message:\n%s\n", buffer2); 
+
+							//printf("Received message:\n%s\n", buffer2); 
 							int filesize;
 							stringstream st;
 								
 							st.str(buffer2);
 							st >> temp4; //TRR
-							st >> tf;       //f
-							st >> filename;
-							st >> filesize ;
+							if(temp4==TRR){
+								st >> tf;       //f
+								if(tf=='f'){
+									st >> filename;
+									st >> filesize ;
 
-							stringstream temp;
-							temp << filesize;
-							string a =temp.str();
+									
+												//TRR f filename size
+									int headersize = strlen(TRR)+strlen("f")+filename.length()+intLength(filesize)+strlen(" ")*4;
+									filename="translated_"+filename;
+									char data[filesize];
+									
+									for(int j = headersize , k = 0; j != num_bytes; j++, k++)
+										data[k] = buffer2[j];
 
-							int headersize = 6+filename.length()+1 + a.length() +1;
-							filename="translated_"+filename;
-							char data[filesize];
-							int k;
-							for(int j = headersize , k = 0; j != num_bytes; j++, k++)
-								data[k] = buffer2[j];
-
-							total=num_bytes - headersize;
-							while(total < filesize){
-								cout << total << "/" << filesize << endl;
-								if((n = read(fd2, data + total, filesize - total)) == -1)
-									exit(1);
-								total += n;
+									total=num_bytes - headersize;
+									while(total < filesize){
+										//cout << total << "/" << filesize << endl;
+										if((n = read(fd2, data + total, filesize - total)) == -1)
+											oppsError();
+										total += n;
+									}
+									cout<<"file recieved: "<<filename<<endl;
+								//	cout << total << "/" << filesize << endl;
+									FILE* file = fopen(filename.c_str(), "w+b");
+									if (!file) oppsError();
+									total=0;
+									while(total < filesize){
+										if((n=fwrite(data, filesize,1 , file))==0) oppsError();
+										total+=n;
+									}
+									if(fclose(file) == EOF) oppsError();	
+								}
 							}
-							cout << total << "/" << filesize << endl;
-							FILE* file = fopen(filename.c_str(), "w+b");
-							fwrite(data, filesize,1 , file);
-							fclose(file);
 						}
 					}
-					close(fd2);
-				}
+					if(close(fd2)==-1) oppsError();
+					if(close(fd)==-1) oppsError();
+					fdOpen=false;
+				}else {printf("Error in message from server\n");}
 			}
-		}
+		}else{printf("Please correct your input\n");}
 		wantsAnswer=false;
 		getline(cin, user_input);
 		stringstream s;
@@ -362,7 +390,7 @@ int main(int argc, char** argv){
 		swapStreams(&s, &input_stream);
 		input_stream >> instruction;
 	}		
-	close(fd);
+	
 
 	return 0;
 }
