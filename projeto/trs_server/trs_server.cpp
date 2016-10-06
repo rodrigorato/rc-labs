@@ -470,7 +470,7 @@ int main(int argc, char* argv[]){
 						rewind(translatedFile);
 
 						printf("[f-> %s] Translation available on file \"%s\" (%d bytes)! Trying to send it.\n", userNameAndPort.c_str(), transfileName.c_str(), transfileSize);
-						string msg1 = "TRR f " + transfileName + intToString(transfileSize) + " ";
+						string msg1 = "TRR f " + transfileName + " " + intToString(transfileSize) + " ";
 						sendTcpMessage(user_connsocket_fd, msg1);
 
 						char content[transfileSize];
