@@ -30,7 +30,7 @@
 using namespace std;
 //por if em gethosts, perguntar ao user what do do se o tejo nao responde , verificar se os argumentos tao certos,ostringstream
 //wantsAnswer é solucao ate se separar melhor as coisas, nao deixar fazer requests primeiro, nao ter numeros randoms no programa
-//assegurar k tamanho max sao cumpridos(filename)
+//assegurar k tamanho max sao cumpridos(filename), erros no fopen fseek e cenas
 void hexa(char* buff,int size){
 	for(int i=0;i<size;i++){
 		printf("%x ",buff[i]);
@@ -62,7 +62,10 @@ int startUDP(int fd,struct hostent* hostptr,string TCSname,struct sockaddr_in se
 			
 		addrlen = sizeof(serveraddr);
 }*/
-
+void oppsError(){
+	printf("There was an error\n");
+	exit(1);
+}
 
 void swapStreams(stringstream* a, stringstream *b){
 	string a_content = a->str();
@@ -75,7 +78,7 @@ int main(int argc, char** argv){
 	int fd;
 	socklen_t addrlen;
 	struct hostent* hostptr;
-	struct sockaddr_in serveraddr, clientaddr;
+	struct sockaddr_in serveraddr;
 	char buffer[128];//,instruction[8];
 	char message[128];   //  buffer and message have a random bullshit size
 	int TCSport=TCSPORT;
@@ -87,8 +90,8 @@ int main(int argc, char** argv){
 	char tf;//indicador se vai-se traduzir texto ou ficheiro
 	int numWords;
 	bool wantsAnswer=false;
+	
 	//./user -n TCSname -p TCSport
-
 	if(argc < 1 || argc > 5)  // reading input
 		printf("wrong input\n");
 	for(int i = 1; i < argc; i+=2){
@@ -113,70 +116,64 @@ int main(int argc, char** argv){
 				printf("wrong input\n");
 		}
 	}
+	
 	string user_input,instruction;
-
 	stringstream input_stream;
 	getline(cin, user_input);
 	input_stream << user_input;
 	input_stream >> instruction; 
 
-	/*for( i=0;user_input[i]!=' ';i++){
-		instruction[i]=user_input[i];
-	}*/
-	//scanf("%s", instruction);
-
 
 	while(strcmp(instruction.c_str(),"exit")){                      // ciclo de espera por input do utilizador
 		if (!strcmp(instruction.c_str(),"list")){       
 
-			if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) exit(1);//udp
+			if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) oppsError();//udp
 
-			hostptr = gethostbyname(TCSname.c_str());
-			
+			if((hostptr = gethostbyname(TCSname.c_str()))==NULL) oppsError();
+
 			memset((void*)&serveraddr, (int)'\0', sizeof(serveraddr));
 			serveraddr.sin_family = AF_INET;
 			serveraddr.sin_addr.s_addr = ((struct in_addr*) (hostptr->h_addr_list[0]))->s_addr;
 			serveraddr.sin_port = htons((u_short)TCSport);
 			
 			addrlen = sizeof(serveraddr);
-
-			if(sendto(fd, MESSAGE1, strlen(MESSAGE1), 0, (struct sockaddr*) &serveraddr, addrlen) == -1) exit(1);
+			//ULQ\n
+			if(sendto(fd, MESSAGE1, strlen(MESSAGE1), 0, (struct sockaddr*) &serveraddr, addrlen) == -1) oppsError();
 			
-			printf("Sent message:%s", MESSAGE1);//ULQ
+			//printf("Sent message:%s", MESSAGE1);//ULQ
 			wantsAnswer=true;
 		}
 		else if (!strcmp(instruction.c_str(),"request")){ //request n t palvra
 			int langNum;
 
-			input_stream >> langNum;
-			input_stream >> tf;
+			if (input_stream >> langNum && input_stream >> tf){
 
+				//UNQ + language   languages[langNum-1]
+				string message2="UNQ ";
+				string temp2= languages[langNum-1];
+				message2+=temp2;
+				message2+='\n';
+				
+				if(sendto(fd, message2.c_str(), message2.length() + 1, 0, (struct sockaddr*) &serveraddr, addrlen) == -1) exit(1);
+				printf("Sent message: %s", message2.c_str());//UNQ language
 
-			//UNQ + language   languages[langNum-1]
-			string message2="UNQ ";
-			string temp2= languages[langNum-1];
-			message2+=temp2;
-			message2+='\n';
-			
-			if(sendto(fd, message2.c_str(), message2.length() + 1, 0, (struct sockaddr*) &serveraddr, addrlen) == -1) exit(1);
-			printf("Sent message: %s", message2.c_str());//UNQ language
+				if(tf=='t'){
+					printf("Palavras a traduzir para %s:\n",languages[langNum-1]);
+					int i;
+					for(i=0;input_stream >> words[i];i++){
+						printf("%s\n",words[i]);
+					}
+					numWords=i;
 
-			if(tf=='t'){
-				printf("Palavras a traduzir para %s:\n",languages[langNum-1]);
-				int i;
-				for(i=0;input_stream >> words[i];i++){
-					printf("%s\n",words[i]);
+					
+				}else if(tf=='f'){// send images
+					
+					input_stream >> filename;
+					printf("Imagem a traduzir para %s: %s\n",languages[langNum-1],filename.c_str() );
+
 				}
-				numWords=i;
-
-				
-			}else if(tf=='f'){// send images
-				
-				input_stream >> filename;
-				printf("Imagem a traduzir para %s: %s\n",languages[langNum-1],filename.c_str() );
-
+				wantsAnswer=true;
 			}
-			wantsAnswer=true;
 
 		}
 		if (wantsAnswer){
@@ -213,7 +210,7 @@ int main(int argc, char** argv){
 					int fd2;
 					struct hostent* hostptr2;
 					struct sockaddr_in serveraddr2;
-					char buffer2[300000];
+					char buffer2[256];
 
 					if((fd2 = socket(AF_INET, SOCK_STREAM, 0)) == -1) exit(1);
 					if((hostptr2=gethostbyname(ipTRS))==NULL) printf("erro gethostbyname\n"); // to do: exit(1)
@@ -246,7 +243,7 @@ int main(int argc, char** argv){
 
 						//recieving anser
 						int num_bytes=0;
-						if((num_bytes=read(fd2, buffer2, 300000)) == -1) exit(1);
+						if((num_bytes=read(fd2, buffer2, 256)) == -1) exit(1);
 						buffer2[num_bytes]='\0';
 						printf("Received message:\n%s\n", buffer2); 
 
@@ -270,7 +267,6 @@ int main(int argc, char** argv){
 						message3 += filename; 
 						message3 += ' ';
 						
-						//ifstream file(filename,ios::ate | ios::binary);
 						//if(file.is_open()){
 						FILE * file = fopen(filename.c_str(), "rb");// r ou rb?
 
@@ -302,7 +298,7 @@ int main(int argc, char** argv){
 							total +=n;
 							cout<<total<<'/'<<size<<endl;
 						}
-
+						if((write(fd2, "\n", 1)) == -1) exit(1);
 			
        					cout<<total<<endl;
 						cout<< "file send "<<endl;
@@ -310,12 +306,13 @@ int main(int argc, char** argv){
 							//message3 +='\n';
 						//}else cout << "could not open file"<<endl;
 					
+
+
 						// recieving responce and creating file
 
 						int num_bytes=0;
 						
-						while(num_bytes==0);
-							if((num_bytes=read(fd2, buffer2, 2048)) == -1) exit(1);
+						if((num_bytes=read(fd2, buffer2, 256)) == -1) exit(1);
 						cout<<"read: "<<endl;
 						//trr f jaws.jpg 6000 
 						if(!isError(buffer2)){
