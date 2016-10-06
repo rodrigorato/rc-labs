@@ -1,3 +1,10 @@
+/**
+ *	TCS Server for RC-Translate
+ *	Written by group number (GN) 14.
+ *
+ **/
+
+// Header files:
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -20,39 +27,41 @@
 #define MAX_SIZE 1024 //max message size
 #endif
 
-//macros for commands and errors to facilitate code reading
+//macros for commands and errors to facilitate code reading:
 #ifndef COMMANDS
-#define LIST_REQUEST "ULQ"	
+#define LIST_REQUEST "ULQ"	// list requested by user app;
 
-#define LIST_RESPONSE "ULR "
+#define LIST_RESPONSE "ULR "	//list request sent to user app;
 
-#define NO_SERVERS_ERROR "ULR EOF\n"
+#define NO_SERVERS_ERROR "ULR EOF\n" // error sent to user when there are no available servers;
 
-#define CONNECT_REQUEST "UNQ"
+#define CONNECT_REQUEST "UNQ"	// connect data requested by user;
 
-#define CONNECT_RETURN "UNR "
+#define CONNECT_RETURN "UNR "	// connect data sent to user;
 
-#define CONNECT_RETURN_UNKNOWN "UNR EOF\n"
+#define CONNECT_RETURN_UNKNOWN "UNR EOF\n"	// data requested by user does not exist;
 
-#define CONNECT_RETURN_ERROR "UNR ERR\n"
+#define CONNECT_RETURN_ERROR "UNR ERR\n"	// command not correctly formatted;
 
-#define NEW_SERVER "SRG"
+#define NEW_SERVER "SRG"	// command that TRS servers sends to register with TCS;
 
-#define NEW_SERVER_OK "SRR OK\n"
+#define NEW_SERVER_OK "SRR OK\n" // registeration succseful;
 
-#define NEW_SERVER_NOK "SRR NOK\n"
+#define NEW_SERVER_NOK "SRR NOK\n"	// duplicate language exists already;
 
-#define NEW_SERVER_ERR "SRR ERR\n"
+#define NEW_SERVER_ERR "SRR ERR\n" // command not correctly formatted;
 
-#define CLOSE_SERVER "SUN"
+#define CLOSE_SERVER "SUN"	// TRS server shutting down
 
-#define CLOSE_SERVER_OK "SUR OK\n"
+#define CLOSE_SERVER_OK "SUR OK\n"	// removal succseful;
 
-#define CLOSE_SERVER_NOK "SUR NOK\n"
+#define CLOSE_SERVER_NOK "SUR NOK\n"	// removal error;
 
-#define CLOSE_SERVER_ERR "SUR ERR\n"
+#define CLOSE_SERVER_ERR "SUR ERR\n" // command not correctly formatted.
 
 #endif
+
+using namespace std; // easier then writing std:: in every output.
 
 
 struct Server // struct to hold data about currently active servers
@@ -68,11 +77,17 @@ struct Server // struct to hold data about currently active servers
 	}
 };
 
-using namespace std;
+int duplicateLanguage(vector<Server> servers, char* language) // check if a TRS server for the given language already exists 
+{
+	for (unsigned i = 0; i < servers.size() ; ++i)
+	{
+		if (!strcmp(servers[i].language,language)) // language name match.
+		return 1;
+	}
+	return 0;
+}
 
-int duplicateLanguage(vector<Server> servers, char* language);
-
-string intToString(int num){
+string intToString(int num){ // easier int to string conversion.
 	ostringstream s;
 	s << num;
 	return s.str();
@@ -101,7 +116,7 @@ int main(int argc, char const *argv[])
 
 	if(argc > 1)//check if a custom port has been given. if not set default port
 	{	
-		serveraddr.sin_port = htons((u_short) atoi(argv[2]) );
+		serveraddr.sin_port = htons((u_short) atoi(argv[2]));
 		cout << "TCS server started in custom port number " << argv[2] << endl;
 	}
 	else
@@ -126,10 +141,16 @@ int main(int argc, char const *argv[])
 	{
 		char buffer[MAX_SIZE] = "";		// buffer for command input
 
-		if (recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen) == -1) // get message from clients
+		if (recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen) == -1) // get message from clients and place it in buffer
 			exit(-1);
 
-		struct hostent* cl = gethostbyaddr(&clientaddr.sin_addr, sizeof clientaddr.sin_addr, AF_INET);
+		struct hostent* cl;
+
+		if((cl = gethostbyaddr(&clientaddr.sin_addr, sizeof clientaddr.sin_addr, AF_INET)) == NULL) // getting request maker's IP and port for confirmation output
+		{
+			cout << "Failed to get request maker IP and port information. Exiting." << endl;
+			exit(-1);
+		}
 
 		string userAddrAndPort = (inet_ntoa(clientaddr.sin_addr)); 
 		userAddrAndPort += ":"; 
@@ -165,7 +186,7 @@ int main(int argc, char const *argv[])
 
 					data += '\n'; // add new line character to end of message
 
-					if(sendto(fd, data.c_str(), strlen(data.c_str()), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send no available servers error
+					if(sendto(fd, data.c_str(), strlen(data.c_str()), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send language list to client
 						exit(-1);
 
 					cout << "List request sent to " << cl->h_name << " at " << userAddrAndPort << endl;
@@ -203,7 +224,7 @@ int main(int argc, char const *argv[])
 							data += ' ';
 							data += '\n';
 
-							if(sendto(fd, data.c_str(), strlen(data.c_str()), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send no available servers error
+							if(sendto(fd, data.c_str(), strlen(data.c_str()), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) // send request data to client;
 								exit(-1);
 
 							cout << "Connection data sent to " << cl->h_name << " at " << userAddrAndPort << endl;
@@ -239,6 +260,7 @@ int main(int argc, char const *argv[])
 					Server s(language_buffer,ip_buffer, port_buffer); // create new server and add to server vector
 					servers.push_back(s);
 					cout << "Added: " <<  servers[servers.size()-1].language << ' ' << servers[servers.size()-1].ip_addr << ' ' << servers[servers.size()-1].port << endl;
+
 					if(sendto(fd, NEW_SERVER_OK, strlen(NEW_SERVER_OK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to translation server
 						exit(-1); 
 				}
@@ -269,7 +291,7 @@ int main(int argc, char const *argv[])
 				{
 					for (unsigned i = 0; i < servers.size(); ++i)
 						{
-							if (!strcmp(servers[i].language,language_buffer) && servers[i].port == port_buffer && !strcmp(servers[i].ip_addr,ip_buffer)) // find server that matche sthe one to remove
+							if (!strcmp(servers[i].language,language_buffer) && servers[i].port == port_buffer && !strcmp(servers[i].ip_addr,ip_buffer)) // find server that matches the one to remove
 								{
 									cout << "Removed: " << servers[i].language << ' ' << servers[i].ip_addr << ' ' << servers[i].port << endl;
 									servers.erase(servers.begin()+i);
@@ -278,7 +300,7 @@ int main(int argc, char const *argv[])
 								}
 							else if (!strcmp(servers[i].language,language_buffer))
 							{
-								if(sendto(fd, CLOSE_SERVER_NOK, strlen(CLOSE_SERVER_NOK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to removed server
+								if(sendto(fd, CLOSE_SERVER_NOK, strlen(CLOSE_SERVER_NOK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send error message to removed server
 									exit(-1);
 								cout << "Failed to add TRS server at " << ip_buffer << ":" << port_buffer << ". IP and/or port number do not match." << endl;
 							}
@@ -287,23 +309,12 @@ int main(int argc, char const *argv[])
 
 				else
 				{
-					if(sendto(fd, CLOSE_SERVER_NOK, strlen(CLOSE_SERVER_NOK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send confirmation message to removed server
+					if(sendto(fd, CLOSE_SERVER_NOK, strlen(CLOSE_SERVER_NOK), 0, (struct sockaddr*) &clientaddr, addrlen) == -1) //send failure message to server
 						exit(-1);
 					cout << "Failed to remove TRS server at " << ip_buffer << ":" << port_buffer << ". Language does not exist." << endl;
 
 				}
 			}
-	}
-	return 0;
-}
-
-
-int duplicateLanguage(vector<Server> servers, char* language) // check if a TRS server for the given language already exists 
-{
-	for (unsigned i = 0; i < servers.size() ; ++i)
-	{
-		if (!strcmp(servers[i].language,language))
-		return 1;
 	}
 	return 0;
 }
