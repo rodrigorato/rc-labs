@@ -4,9 +4,6 @@
  *
  **/
 
-// PRINT USER REQUESTS!!!!!!!!!!!!!!!1
-//!!!!!!!!!!!!!!!!!!!!!!
-
 
 #define GN 14 
 
@@ -51,7 +48,7 @@
 #define TRANSLATION_NOT_AVAILABLE_WORD ""
 #define UDP_RECV_ERROR ""
 
-#define MAX_COMPUTER_NAME 25 // Ask. Idunno.
+#define MAX_COMPUTER_NAME 25 
 #define MAX_USER_BACKLOG 5
 
 // Protocol Messages
@@ -92,7 +89,6 @@ void printBufferReadFailed(){
 
 void sendUdpMessage(string message, int sock_fd, int flags, sockaddr_in tcs_address){
 	socklen_t addrlen = sizeof(tcs_address);
-	// sendto(int sockfd, char* message, size_t len(message), int flags = 0, sockaddr* dest_addr, socklen_t addrlen);
 	if(sendto(sock_fd, message.c_str(), strlen(message.c_str()), 0, (struct sockaddr*) &tcs_address, addrlen) == -1) 
 		printSysCallFailed();
 	
@@ -341,7 +337,8 @@ int main(int argc, char* argv[]){
 		if((user_connsocket_fd = accept(user_serversocket_fd, (struct sockaddr*) &user_addr, &useraddr_len)) == -1) 
 			printSysCallFailed();
 		
-		struct hostent* he = gethostbyaddr(&user_addr.sin_addr, sizeof user_addr.sin_addr, AF_INET);
+		struct hostent* he;
+		if((he=gethostbyaddr(&user_addr.sin_addr, sizeof user_addr.sin_addr, AF_INET)) = NULL) printSysCallFailed();
 		
 		string userNameAndPort = (he->h_name); 
 		userNameAndPort += ":"; 
@@ -493,7 +490,6 @@ int main(int argc, char* argv[]){
 							sendTcpMessage(user_connsocket_fd, msg1);
 
 							char content[transfileSize];
-							int tempResult;
 							while(fread(content, transfileSize, 1, translatedFile) == 1);
 							if(fclose(translatedFile) == EOF) printSysCallFailed();
 
