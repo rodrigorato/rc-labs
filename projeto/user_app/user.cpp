@@ -56,14 +56,14 @@ bool isError(char buff[]){
 	else return false;
 	return true;
 }
-void oppsError(){
+void oopsError(){
 	printf("There was an error\n");
 	exit(1);
 }
 void alarmCatcher(int error){}
 struct sockaddr_in startUDP(struct hostent* hostptr,string TCSname,struct sockaddr_in serveraddr,int TCSport){
 
-		if((hostptr = gethostbyname(TCSname.c_str()))==NULL) oppsError();
+		if((hostptr = gethostbyname(TCSname.c_str()))==NULL) oopsError();
 			
 		memset((void*)&serveraddr, (int)'\0', sizeof(serveraddr));
 		serveraddr.sin_family = AF_INET;
@@ -104,8 +104,8 @@ int main(int argc, char** argv){
 	int numWords;
 	bool wantsAnswer=false;
 	
-	if(signal(SIGALRM,alarmCatcher) == SIG_ERR) oppsError();
-	if(siginterrupt(SIGALRM,1) == -1) oppsError();
+	if(signal(SIGALRM,alarmCatcher) == SIG_ERR) oopsError();
+	if(siginterrupt(SIGALRM,1) == -1) oopsError();
 
 
 	//./user -n TCSname -p TCSport
@@ -146,14 +146,14 @@ int main(int argc, char** argv){
 	while(strcmp(instruction.c_str(),"exit")){                      // ciclo de espera por input do utilizador
 		if (!strcmp(instruction.c_str(),"list")){       
 
-			if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) oppsError();//udp
+			if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) oopsError();//udp
 
 			serveraddr=startUDP(hostptr,TCSname,serveraddr,TCSport);
 			addrlen = sizeof(serveraddr);
 			fdOpen = true;
 
 			//ULQ\n
-			if(sendto(fd, ULQ, strlen(ULQ), 0, (struct sockaddr*) &serveraddr, addrlen) == -1) oppsError();
+			if(sendto(fd, ULQ, strlen(ULQ), 0, (struct sockaddr*) &serveraddr, addrlen) == -1) oopsError();
 			
 			//printf("Sent message:%s", MESSAGE1);//ULQ
 			first=false;
@@ -163,7 +163,7 @@ int main(int argc, char** argv){
 			if (first) printf("You must must first use 'list' before you can request\n");
 			else{
 				if(!fdOpen){
-					if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) oppsError();
+					if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) oopsError();
 					serveraddr=startUDP(hostptr,TCSname,serveraddr,TCSport);
 					addrlen = sizeof(serveraddr);
 					fdOpen = true;
@@ -177,7 +177,7 @@ int main(int argc, char** argv){
 					message+=temp;
 					message+='\n';
 					
-					if(sendto(fd, message.c_str(), message.length() , 0, (struct sockaddr*) &serveraddr, addrlen) == -1) oppsError();
+					if(sendto(fd, message.c_str(), message.length() , 0, (struct sockaddr*) &serveraddr, addrlen) == -1) oopsError();
 					printf("Sent message: %s", message.c_str());//UNQ language
 
 					if(tf=='t'){
@@ -203,7 +203,7 @@ int main(int argc, char** argv){
 		if (wantsAnswer){     // recieving message from central server
 			char message[3];// array para onde se vai copiar as instrucoes de 3 chars (ULR,UNR)
 			alarm(15);                                 
-			if(recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &serveraddr, &addrlen) == -1) oppsError();
+			if(recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &serveraddr, &addrlen) == -1) oopsError();
 			alarm(0);
 			//buffer[num_bytes]='\0';
 			//printf("Received message:\n%s",buffer); 
@@ -235,15 +235,15 @@ int main(int argc, char** argv){
 					struct sockaddr_in serveraddr2;
 					char buffer2[BUFFER_SIZE];
 
-					if((fd2 = socket(AF_INET, SOCK_STREAM, 0)) == -1) oppsError();
-					if((hostptr2=gethostbyname(ipTRS))==NULL) oppsError(); 
+					if((fd2 = socket(AF_INET, SOCK_STREAM, 0)) == -1) oopsError();
+					if((hostptr2=gethostbyname(ipTRS))==NULL) oopsError(); 
 
 					memset((void*)&serveraddr2, (int)'\0', sizeof(serveraddr2));
 					serveraddr2.sin_family = AF_INET;
 					serveraddr2.sin_addr.s_addr = ((struct in_addr*) (hostptr2->h_addr_list[0]))->s_addr;
 					serveraddr2.sin_port = htons((u_short)portTRS);
 
-					if(connect(fd2, (struct sockaddr*) &serveraddr2, sizeof(serveraddr2)) == -1) oppsError();
+					if(connect(fd2, (struct sockaddr*) &serveraddr2, sizeof(serveraddr2)) == -1) oopsError();
 					printf("Connected to TRS successfully\n");
 					int size=0;
 					string message2 = TRQ;
@@ -261,11 +261,11 @@ int main(int argc, char** argv){
 						}
 						message2 += '\n';
 						//cout << "sent message: \n" << message2 << endl;	
-						if(write(fd2, message2.c_str(), message2.length()) == -1) oppsError();
+						if(write(fd2, message2.c_str(), message2.length()) == -1) oopsError();
 
 						//recieving answer
 						int num_bytes=0;
-						if((num_bytes=read(fd2, buffer2, BUFFER_SIZE)) == -1) oppsError();
+						if((num_bytes=read(fd2, buffer2, BUFFER_SIZE)) == -1) oopsError();
 						buffer2[num_bytes]='\0';
 						//printf("Received message:\n%s\n", buffer2); 
 
@@ -293,22 +293,22 @@ int main(int argc, char** argv){
 						
 						//if(file.is_open()){
 						FILE * file = fopen(filename.c_str(), "rb");
-						if (!file) oppsError();
+						if (!file) oopsError();
 
-						if(fseek(file, 0L, SEEK_END) == -1) oppsError() ;
-						if((size = ftell(file))==-1) oppsError();
+						if(fseek(file, 0L, SEEK_END) == -1) oopsError() ;
+						if((size = ftell(file))==-1) oopsError();
 						rewind(file);
 
 						temp <<size;
 						message2 += temp.str();
 						message2 += ' ';
 						//cout << "sent message:\n" <<message2<<"data"<<endl;
-						if(write(fd2, message2.c_str(), message2.length()) == -1) oppsError();
+						if(write(fd2, message2.c_str(), message2.length()) == -1) oopsError();
 
 
 						char content[size];
        					while(fread(content, size,1 , file)==1);//1, 1024 ou 1024,1?
-       					if(fclose(file)==EOF) oppsError();
+       					if(fclose(file)==EOF) oopsError();
        					//cout<<size<<endl;
        					//hexa(content,size);
        					
@@ -318,11 +318,11 @@ int main(int argc, char** argv){
 						int total=0;
 
    						while(total<size){
-							if((n=write(fd2, content+total, size-total)) == -1) oppsError();
+							if((n=write(fd2, content+total, size-total)) == -1) oopsError();
 							total +=n;
 							//cout<<total<<'/'<<size<<endl;
 						}
-						if((write(fd2, "\n", 1)) == -1) oppsError();
+						if((write(fd2, "\n", 1)) == -1) oopsError();
 			
        					//cout<<total<<endl;
 						cout<< "file send "<<endl;
@@ -336,7 +336,7 @@ int main(int argc, char** argv){
 
 						int num_bytes=0;
 						
-						if((num_bytes=read(fd2, buffer2, 256)) == -1) oppsError();
+						if((num_bytes=read(fd2, buffer2, 256)) == -1) oopsError();
 						
 						//trr f jaws.jpg 6000 
 						if(!isError(buffer2)){
@@ -367,25 +367,25 @@ int main(int argc, char** argv){
 									while(total < filesize){
 										//cout << total << "/" << filesize << endl;
 										if((n = read(fd2, data + total, filesize - total)) == -1)
-											oppsError();
+											oopsError();
 										total += n;
 									}
 									cout<<"file recieved: "<<filename<<endl;
 								//	cout << total << "/" << filesize << endl;
 									FILE* file = fopen(filename.c_str(), "w+b");
-									if (!file) oppsError();
+									if (!file) oopsError();
 									total=0;
 									while(total < filesize){
-										if((n=fwrite(data, filesize,1 , file))==0) oppsError();
+										if((n=fwrite(data, filesize,1 , file))==0) oopsError();
 										total+=n;
 									}
-									if(fclose(file) == EOF) oppsError();	
+									if(fclose(file) == EOF) oopsError();	
 								}else {printf("Unexpected format in server message\n");}
 							}else {printf("Unexpected format in server message\n");}
 						}else {printf("The server responded with an error");}
 					}
-					if(close(fd2)==-1) oppsError();
-					if(close(fd)==-1) oppsError();
+					if(close(fd2)==-1) oopsError();
+					if(close(fd)==-1) oopsError();
 					fdOpen=false;
 				}else {printf("Unexpected format in server message\n");}
 			}else {printf("The server responded with an error");}
