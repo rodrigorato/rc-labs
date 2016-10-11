@@ -163,6 +163,7 @@ int main(int argc, char** argv){
 			if (first) printf("You must must first use 'list' before you can request\n");
 			else{
 				if(!fdOpen){
+					cout << "entrou?" << endl;
 					if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) oopsError();
 					serveraddr=startUDP(hostptr,TCSname,serveraddr,TCSport);
 					addrlen = sizeof(serveraddr);
@@ -234,15 +235,15 @@ int main(int argc, char** argv){
 					struct hostent* hostptr2;
 					struct sockaddr_in serveraddr2;
 					char buffer2[BUFFER_SIZE];
-
+					
 					if((fd2 = socket(AF_INET, SOCK_STREAM, 0)) == -1) oopsError();
 					if((hostptr2=gethostbyname(ipTRS))==NULL) oopsError(); 
-
 					memset((void*)&serveraddr2, (int)'\0', sizeof(serveraddr2));
 					serveraddr2.sin_family = AF_INET;
 					serveraddr2.sin_addr.s_addr = ((struct in_addr*) (hostptr2->h_addr_list[0]))->s_addr;
 					serveraddr2.sin_port = htons((u_short)portTRS);
-
+					
+					
 					if(connect(fd2, (struct sockaddr*) &serveraddr2, sizeof(serveraddr2)) == -1) oopsError();
 					printf("Connected to TRS successfully\n");
 					int size=0;
