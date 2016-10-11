@@ -194,7 +194,7 @@ void writeFile(string filename, int filesize, char* data){
 	if(!file) printSysCallFailed();
 	int totalWritten = 0, n = 0;
 	while(totalWritten < filesize){
-		if((n = fwrite(data, filesize, 1, file)) == 0) printSysCallFailed();
+		if((n = fwrite(data + totalWritten, 1, filesize, file)) == 0) printSysCallFailed();
 		totalWritten += n;
 	}
   	if(fclose(file) == EOF) printSysCallFailed();
@@ -408,15 +408,15 @@ int main(int argc, char* argv[]){
 	bool continueListening = true;
 	while(continueListening){ 
 		int forkId = -1;
-
 		if((user_connsocket_fd = accept(user_serversocket_fd, (struct sockaddr*) &user_addr, &useraddr_len)) == -1) 
 			printSysCallFailed();
 		
 		struct hostent* he;
-		if((he=gethostbyaddr(&user_addr.sin_addr, sizeof user_addr.sin_addr, AF_INET)) = NULL) printSysCallFailed();
+		if((he=gethostbyaddr(&user_addr.sin_addr, sizeof user_addr.sin_addr, AF_INET)) == NULL) printSysCallFailed();
 		
 		string userNameAndPort = (he->h_name); 
 		userNameAndPort += ":"; 
+
 		userNameAndPort += intToString(ntohs(user_addr.sin_port));
 		
 		string userAddrAndPort = (inet_ntoa(user_addr.sin_addr)); 
@@ -426,6 +426,7 @@ int main(int argc, char* argv[]){
 		printf("[%s:%d] - Accepted connection from user at %s (%s).\n", local_name, TRSport, 
 									userNameAndPort.c_str(), 
 									userAddrAndPort.c_str());
+				
 		forkId = fork();
 
 		if(forkId == -1)
@@ -519,22 +520,19 @@ int main(int argc, char* argv[]){
 					string saved_filename = SAVED_FILE_PREFIX + filename;
 					
 					int n = 0, totalRead = read_bytes - header_size;
-					char dataBuffer[filesize];
+					char dataBuffer[filesize+1]; // +1 due to the last \n char
 					
 					for(int j = header_size, k = 0; j != read_bytes; j++, k++)
 						dataBuffer[k] = response[j];
 
 					printf("[<-f %s] Trying to receive file \"%s\" (%d bytes).\n", userNameAndPort.c_str(), filename.c_str(), filesize);
-					while(totalRead < filesize){
-						if((n = read(user_connsocket_fd, dataBuffer + totalRead, filesize - totalRead)) == -1)
+					while(totalRead < (filesize + 1)){ // +1 due to the last \n char
+						if((n = read(user_connsocket_fd, dataBuffer + totalRead, (filesize + 1) - totalRead)) == -1)
 							printSysCallFailed();
 						totalRead += n;
 					}
-					char msgEnd[1];
-					if((n = read(user_connsocket_fd, msgEnd, 1)) == -1)
-						printSysCallFailed();
 
-					if(msgEnd[0] != TERM_CHAR){
+					if(dataBuffer[filesize] != TERM_CHAR){
 						string errMsg = "TRR ERR";
 						errMsg += TERM_CHAR;
 						sendTcpMessage(user_connsocket_fd, errMsg);
