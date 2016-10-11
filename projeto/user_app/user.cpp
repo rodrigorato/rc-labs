@@ -61,6 +61,7 @@ void oopsError(){
 	exit(1);
 }
 void alarmCatcher(int error){}
+
 struct sockaddr_in startUDP(struct hostent* hostptr,string TCSname,struct sockaddr_in serveraddr,int TCSport){
 
 		if((hostptr = gethostbyname(TCSname.c_str()))==NULL) oopsError();
@@ -386,9 +387,9 @@ int main(int argc, char** argv){
 						}else {printf("The server responded with an error");}
 					}
 					if(close(fd2)==-1) oopsError();
-					if(close(fd)==-1) oopsError();
-					fdOpen=false;
 				}else {printf("Unexpected format in server message\n");}
+				if(close(fd)==-1) oopsError();
+				fdOpen=false;
 			}else {printf("The server responded with an error");}
 		}else{printf("Please correct your input\n");}
 		wantsAnswer=false;
