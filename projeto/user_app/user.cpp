@@ -327,7 +327,7 @@ int main(int argc, char** argv){
 						if((write(fd2, "\n", 1)) == -1) oopsError();
 			
        					//cout<<total<<endl;
-						cout<< "file send "<<endl;
+						cout<< "file sent "<<endl;
 
 							//message3 +='\n';
 						//}else cout << "could not open file"<<endl;
@@ -373,24 +373,26 @@ int main(int argc, char** argv){
 										total += n;
 									}
 									cout<<"file recieved: "<<filename<<endl;
-								//	cout << total << "/" << filesize << endl;
+									cout << total << "/" << filesize << endl;
 									FILE* file = fopen(filename.c_str(), "w+b");
 									if (!file) oopsError();
 									total=0;
 									while(total < filesize){
-										if((n=fwrite(data, filesize,1 , file))==0) oopsError();
+										if((n=fwrite(data+total, 1,filesize , file))==0) oopsError();
 										total+=n;
 									}
+									cout << "translated file created"<<endl;
+									cout << total << "/" << filesize << endl;
 									if(fclose(file) == EOF) oopsError();	
 								}else {printf("Unexpected format in server message\n");}
 							}else {printf("Unexpected format in server message\n");}
-						}else {printf("The server responded with an error");}
+						}else {printf("The server responded with an error\n");}
 					}
 					if(close(fd2)==-1) oopsError();
 				}else {printf("Unexpected format in server message\n");}
 				if(close(fd)==-1) oopsError();
 				fdOpen=false;
-			}else {printf("The server responded with an error");}
+			}else {printf("The server responded with an error\n");}
 		}else{printf("Please correct your input\n");}
 		wantsAnswer=false;
 		getline(cin, user_input);
