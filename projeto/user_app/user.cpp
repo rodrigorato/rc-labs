@@ -7,6 +7,8 @@
 #include <netdb.h>
 #include <string.h>
 #include <math.h>
+#include <signal.h>
+
 
 #include <iostream>
 #include <string>
@@ -58,7 +60,7 @@ void oppsError(){
 	printf("There was an error\n");
 	exit(1);
 }
-
+void alarmCatcher(int error){}
 struct sockaddr_in startUDP(struct hostent* hostptr,string TCSname,struct sockaddr_in serveraddr,int TCSport){
 
 		if((hostptr = gethostbyname(TCSname.c_str()))==NULL) oppsError();
@@ -102,6 +104,10 @@ int main(int argc, char** argv){
 	int numWords;
 	bool wantsAnswer=false;
 	
+	if(signal(SIGALRM,alarmCatcher) == SIG_ERR) oppsError();
+	if(siginterrupt(SIGALRM,1) == -1) oppsError();
+
+
 	//./user -n TCSname -p TCSport
 	if(argc < 1 || argc > 5)  // reading input
 		printf("wrong input\n");
@@ -196,8 +202,9 @@ int main(int argc, char** argv){
 		}
 		if (wantsAnswer){     // recieving message from central server
 			char message[3];// array para onde se vai copiar as instrucoes de 3 chars (ULR,UNR)
-			                                 
-			if(recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &serveraddr, &addrlen) == -1) oppsError();//aqui
+			alarm(15);                                 
+			if(recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*) &serveraddr, &addrlen) == -1) oppsError();
+			alarm(0);
 			//buffer[num_bytes]='\0';
 			//printf("Received message:\n%s",buffer); 
 			sscanf(buffer,"%s", message);
@@ -275,9 +282,9 @@ int main(int argc, char** argv){
 									for(int i=0;s >> words[i];i++)
 										cout<<words[i]<<' ';
 									cout<<endl;
-								}
-							}
-						}
+								}else {printf("Unexpected format in server message\n");}
+							}else {printf("Unexpected format in server message\n");}
+						}else {printf("The server responded with an error");}
 
 					}else if (tf=='f'){
 						stringstream temp;
@@ -373,15 +380,15 @@ int main(int argc, char** argv){
 										total+=n;
 									}
 									if(fclose(file) == EOF) oppsError();	
-								}
-							}
-						}
+								}else {printf("Unexpected format in server message\n");}
+							}else {printf("Unexpected format in server message\n");}
+						}else {printf("The server responded with an error");}
 					}
 					if(close(fd2)==-1) oppsError();
 					if(close(fd)==-1) oppsError();
 					fdOpen=false;
-				}else {printf("Error in message from server\n");}
-			}
+				}else {printf("Unexpected format in server message\n");}
+			}else {printf("The server responded with an error");}
 		}else{printf("Please correct your input\n");}
 		wantsAnswer=false;
 		getline(cin, user_input);
