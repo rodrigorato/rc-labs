@@ -1,0 +1,5 @@
+cao.jpg dog.jpg
+gato.jpg cat.jpg
+ourico.jpg hedgehog.jpg
+coruja.jpg owl.jpg
+preguica.jpg sloth.jpg

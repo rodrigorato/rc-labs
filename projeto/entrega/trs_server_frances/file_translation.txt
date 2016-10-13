@@ -1,0 +1,5 @@
+cao.jpg chien.jpg
+gato.jpg chat.jpg
+ourico.jpg herisson.jpg
+coruja.jpg chouette.jpg
+preguica.jpg paresseux.jpg
