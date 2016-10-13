@@ -98,10 +98,11 @@ int main(int argc, char** argv){
 	char languages[MAX_LANGS][MAX_SIZE_LANGUAGE], words[MAX_WORDS][MAX_SIZE_WORD];
 	string filename;
 	char tf;//indicador se vai-se traduzir texto ou ficheiro
-	int numWords;
+	int numWords, numLangs;
 	bool wantsAnswer=false;
 	bool first=true;
 	bool fdOpen=false;
+
 	
 	if(signal(SIGALRM,alarmCatcher) == SIG_ERR) oopsError();
 	if(siginterrupt(SIGALRM,1) == -1) oopsError();
@@ -159,7 +160,6 @@ int main(int argc, char** argv){
 			if (first) printf("You must must first use 'list' before you can request\n");
 			else{
 				if(!fdOpen){
-					cout << "entrou?" << endl;
 					if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) oopsError();
 					serveraddr=startUDP(hostptr,TCSname,serveraddr,TCSport);
 					addrlen = sizeof(serveraddr);
@@ -175,24 +175,25 @@ int main(int argc, char** argv){
 					message+='\n';
 					
 					if(sendto(fd, message.c_str(), message.length() , 0, (struct sockaddr*) &serveraddr, addrlen) == -1) oopsError();
+					if(langNum > numLangs) printf("That language is not available!\n");
+					else{
+						if(tf=='t'){
+							printf("Palavras a traduzir de %s para portugues:\n",languages[langNum-1]);
+							int i;
+							printf("->");
+							for(i=0;input_stream >> words[i];i++){
+								printf("%s ",words[i]);
+							}
+							printf("\n");
+							numWords=i;
+							wantsAnswer=true;
 
-					if(tf=='t'){
-						printf("Palavras a traduzir de %s para portugues:\n",languages[langNum-1]);
-						int i;
-						printf("->");
-						for(i=0;input_stream >> words[i];i++){
-							printf("%s ",words[i]);
-						}
-						printf("\n");
-						numWords=i;
-						wantsAnswer=true;
-
-					}else if(tf=='f'){
-						wantsAnswer=true;
-						input_stream >> filename;
-						printf("Imagem a traduzir para %s: %s\n",languages[langNum-1],filename.c_str() );
-
-					}else{printf("Wrong input\n");}
+						}else if(tf=='f'){
+							wantsAnswer=true;
+							input_stream >> filename;
+							printf("Imagem a traduzir de %s: %s\n",languages[langNum-1],filename.c_str() );
+						}else{printf("Wrong input\n");}
+					}
 				}else{printf("Wrong input\n");}
 			}
 		}
@@ -205,7 +206,6 @@ int main(int argc, char** argv){
 			sscanf(buffer,"%s", message);
 			if (!isError(buffer)){
 				if(!strcmp(message,ULR)){    //ULR , resposta ao pedido de linguas
-					int numLangs;
 					sscanf(buffer,"%s %d",message, &numLangs);//ULR n linguas
 					printf("Languages available:\n");
 

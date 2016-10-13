@@ -9,3 +9,6 @@ clean:
 	@echo "[TRS] Cleaning output files."
 	rm -rf TRS
 	@echo "[TRS] Cleaned output files successfully."
+
+clean-imgs:
+	rm totranslate*

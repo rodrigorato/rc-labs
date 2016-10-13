@@ -9,3 +9,6 @@ clean:
 	@echo "[USER] Cleaning output files."
 	rm -rf user
 	@echo "[USER] Cleaned output files successfully."
+
+clean-imgs:
+	rm translated*
